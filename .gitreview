@@ -1,0 +1,4 @@
+[gerrit]
+host=review.hpcloud.net
+port=29418
+project=hp/reconbf.git
