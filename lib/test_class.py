@@ -79,7 +79,6 @@ class TestSet():
 
             # if it fails, die
             except ImportError as e:
-                import pdb; pdb.set_trace()
                 logger.error("[-] Could not import test module '%s.%s'" %
                              (directory, module_name))
                 logger.error("\tdetail: '%s'" % str(e))
