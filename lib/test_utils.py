@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 import os
@@ -169,3 +170,42 @@ def get_sysctl_value(path):
         logger.debug("[+] Value found: { " + value + " }")
 
     return value
+
+
+def running_processes():
+    """
+    :returns: A list containing tuples of the pid of a running process
+              and the executable file that launched it (if it exists).
+    """
+    logger = get_logger()
+    procs = []
+    for path in glob.glob('/proc/[0-9]*'):
+        pid = int(os.path.basename(path))
+        exe = None
+        try:
+            exe = os.path.realpath('/proc/{}/exe'.format(pid))
+        except OSError as err:
+            logger.debug("[*] Unable to locate exe for {" + str(pid) + "}")
+        procs.append((pid, exe))
+
+    return procs
+
+
+def executables_in_path():
+    """
+    :returns: A list of all executables on the $PATH
+    """
+    logger = get_logger()
+    executables = []
+    try:
+        syspath = os.environ['PATH']
+    except KeyError as err:
+        logger.debug("[*] $PATH variable not set.")
+        return []
+
+    for path in syspath.split(':'):
+        for dirname, _, files in os.walk(path):
+            executables.extend([os.path.join(path, f) for f in files])
+
+    is_exec = lambda x: os.path.isfile(x) and os.access(x, os.X_OK)
+    return [ x for x in executables if is_exec(x) ]
