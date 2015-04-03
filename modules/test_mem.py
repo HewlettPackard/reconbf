@@ -20,18 +20,19 @@ def test_NX():
     result = " "
     logger.debug("[*] Checking if NX (or NX emulation) is present.")
 
-    try:
-        output = check_output(["dmesg"])
-        if 'NX (Execute Disable) protection: active' in output:
-            reason = "NX protection active in BIOS."
-            logger.debug("[+]" + reason)
-            result = Result.PASS
+    # TM: temp removing try here, since it had no matching except
+    # try:
+    output = check_output(["dmesg"])
+    if 'NX (Execute Disable) protection: active' in output:
+        reason = "NX protection active in BIOS."
+        logger.debug("[+]" + reason)
+        result = Result.PASS
 
-        else:
-            # not active
-            reason = "NX protection disabled in BIOS."
-            logger.debug("[-]" + reason)
-            result = Result.FAIL
+    else:
+        # not active
+        reason = "NX protection disabled in BIOS."
+        logger.debug("[-]" + reason)
+        result = Result.FAIL
 
     return TestResult(result, reason)
 
