@@ -6,6 +6,7 @@ import grp
 import pwd
 import spwd
 import subprocess
+from collections import defaultdict
 
 @test_class.tag("system", "config", "users")
 @test_class.explanation(
@@ -129,19 +130,14 @@ def test_list_sudoers():
     """)
 def test_unique_user():
     passwd_entries = pwd.getpwall()
-    uids = {}
-    user_names = {}
+    uids = defaultdict(list)
+    user_names = defaultdict(list)
 
     # create dict of user IDs for user names and user names for user IDs
     for entry in passwd_entries:
-        # if this is a UID we haven't seen before, add it to the dict
-        if not entry.pw_uid in uids:
-            uids[entry.pw_uid] = []
         # add the user to the list of users for that UID
         uids[entry.pw_uid].append(entry.pw_name)
 
-        if not entry.pw_name in user_names:
-            user_names[entry.pw_name] = []
         # add the user to the list of UIDs for that username
         user_names[entry.pw_name].append(entry.pw_uid)
 
@@ -198,19 +194,14 @@ def test_unique_user():
 
 def test_unique_group():
     grp_entries = grp.getgrall()
-    gids = {}
-    group_names = {}
+    gids = defaultdict(list)
+    group_names = defaultdict(list)
 
     # create dict of group IDs for group names and group names for group IDs
     for entry in grp_entries:
-        # if this is a GID we haven't seen before, add it to the dict
-        if not entry.gr_gid in gids:
-            gids[entry.gr_gid] = []
         # add the group to the list of groups for that GID
         gids[entry.gr_gid].append(entry.gr_name)
 
-        if not entry.gr_name in group_names:
-            group_names[entry.gr_name] = []
         # add the group to the list of GIDs for that group
         group_names[entry.gr_name].append(entry.gr_gid)
 
