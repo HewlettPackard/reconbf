@@ -38,6 +38,11 @@ def _elf_file_headers(path):
 
 
 def _check_relro(path):
+    """
+    RELRO - This prevents exploits that write to the GOT
+    in ELF executables. To achieve full RELRO you would need
+    to build using the flags: $ gcc foo.c -Wl,-z,relro,-z,now.
+    """
     headers = _elf_prog_headers(path)
     if 'GNU_RELRO' in headers:
         dynamic_section = _elf_dynamic(path)
@@ -50,6 +55,16 @@ def _check_relro(path):
 
 
 def _check_stack_canary(path):
+    """
+    Stack Canary - This mitigation mechanism attempts
+    to detect buffer overflows by placing a canary value on
+    the stack before other locals. If it cannot be verified it
+    is an indication that a buffer overflow has occurred.
+    To build a binary with stack protector enable you need to
+    use one of the -fstack-protector, -fstack-protector-strong
+    or -fstack-protector-all command line options. The indicator
+    we are looking for here is the symbol __stack_chk_fail.
+    """
     symbols = _elf_syms(path)
     if '__stack_chk_fail' in symbols:
         return True
@@ -58,6 +73,13 @@ def _check_stack_canary(path):
 
 
 def _check_nx(path):
+    """
+    NX - This mitigation technique attempts to mark
+    as the binary as non-executable memory. E.g. An attacker
+    can't as easily fill a buffer with shellcode and jump
+    to the start address. It is common for this to be disabled
+    for things like JIT interpreters.
+    """
     headers = _elf_prog_headers(path)
     for line in headers.split('\n'):
         if 'GNU_STACK' and 'RWE' not in line:
@@ -67,6 +89,13 @@ def _check_nx(path):
 
 
 def _check_pie(path):
+    """
+    PIE - Position independent executables ensure that
+    the entire address space is randomized, including the base
+    executable position in memory. This makes return to libc
+    type attacks more difficult to achive. To compile an
+    executable as a PIE: $ gcc foo.c -fPIE -pie.
+    """
     file_headers = _elf_file_headers(path)
     for line in file_headers.split('\n'):
         if 'Type:' in line:
@@ -79,11 +108,26 @@ def _check_pie(path):
 
 
 def _check_runpath(path):
+    """
+    Fortify Source - This introduces support for
+    detecting buffer overflows in various functions that perform
+    operations on memory and strings. The indicator for this is
+    symbols such as __sprintf_chk rather then __sprintf. To compile
+    an executable with fortify source enabled:
+        $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
+    """
+
+
     dyn = _elf_dynamic(path)
     return 'rpath' in dyn or 'runpath' in dyn
 
 
 def _check_fortify(path):
+    """
+    Run Path - Baking in a fixed run path to shared libraries
+    can leave executables open to various attacks. This detects
+    binaries that have either rpath or runpath enabled.
+    """
     logger = utils.get_logger()
 
     libc = '/lib/libc.so.6'
@@ -181,65 +225,12 @@ def _check_policy(context, policy, results):
     return (violations, note)
 
 
-@test_class.takes_config
-@test_class.explanation("""
-
-    Protection name: Security hardened binaries
-
-    Status: Experimental
-
-    Check: RELRO - This prevents exploits that write to the GOT
-    in ELF executables. To achieve full RELRO you would need
-    to build using the flags: $ gcc foo.c -Wl,-z,relro,-z,now.
-
-    Check: Stack Canary - This mitigation mechanism attempts
-    to detect buffer overflows by placing a canary value on
-    the stack before other locals. If it cannot be verified it
-    is an indication that a buffer overflow has occurred.
-    To build a binary with stack protector enable you need to
-    use one of the -fstack-protector, -fstack-protector-strong
-    or -fstack-protector-all command line options. The indicator
-    we are looking for here is the symbol __stack_chk_fail.
-
-    Check: NX - This mitigation technique attempts to mark
-    as the binary as non-executable memory. E.g. An attacker
-    can't as easily fill a buffer with shellcode and jump
-    to the start address. It is common for this to be disabled
-    for things like JIT interpreters.
-
-    Check: PIE - Position independent executables ensure that
-    the entire address space is randomized, including the base
-    executable position in memory. This makes return to libc
-    type attacks more difficult to achive. To compile an
-    executable as a PIE: $ gcc foo.c -fPIE -pie.
-
-    Check: Fortify Source - This introduces support for
-    detecting buffer overflows in various functions that perform
-    operations on memory and strings. The indicator for this is
-    symbols such as __sprintf_chk rather then __sprintf. To compile
-    an executable with fortify source enabled:
-        $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
-
-    Check: Run Path - Baking in a fixed run path to shared libraries
-    can leave executables open to various attacks. This detects
-    binaries that have either rpath or runpath enabled.
-
-    Purpose: Determines which configured setuid processes
-    have been built with various security hardening options.
-    """)
-def test_setuid_files(config):
+def _check_binaries(policy, filelist, predicate):
     if not utils.have_command("readelf") or not utils.have_command("nm"):
         return TestResult(Result.SKIP, notes="readelf needed for this test")
 
-    setup = None
-    try:
-        setup = json.loads(open(config['config_file']).read())
-    except OSError:
-        return TestResult(Result.SKIP, notes="Unable to find test config")
-
-    policy = setup['setuid']['policy']
-    for path in utils.executables_in_path():
-        if (os.path.exists(path) and _is_setuid(path) and _is_elf(path)):
+    for path in filelist:
+        if predicate(path):
             results = {
                 "relro":        _check_relro(path),
                 "pie":          _check_pie(path),
@@ -253,3 +244,54 @@ def test_setuid_files(config):
                 return TestResult(Result.FAIL, notes=summary)
 
     return TestResult(Result.PASS)
+
+
+@test_class.takes_config
+@test_class.explanation("""
+    Protection name: Security hardened binaries
+
+    Check: Ensures all setuid executables on the system
+    path have been built with various security hardening
+    options enabled.
+
+    Purpose: Setuid binaries should be built with as many
+    hardening options enabled as possible.
+    """)
+def test_setuid_files(config):
+    setup = None
+    try:
+        setup = json.loads(open(config['config_file']).read())
+    except OSError:
+        return TestResult(Result.SKIP, notes="Unable to find test config")
+
+    policy = setup['setuid']['policy']
+    predicate = lambda x: os.path.exists(x) and _is_setuid(x) and _is_elf(x)
+    return _check_binaries(policy, utils.executables_in_path(), predicate)
+
+
+@test_class.takes_config
+@test_class.explanation("""
+    Protection name: Security hardened binaries
+
+    Check: Ensures configured security critical applications
+    have been built with various mitigation technologies
+    enabled.
+
+    Purpose: Network facing applications that run as root,
+    or allow external access to the system should be built
+    as hardened binaries. This check will ensure these
+    applications are built using RELRO, PIE, Stack Canary,
+    Non-Executable Stack, Fortify Source, and without a
+    hard coded Run Path.
+    """)
+def test_system_critical(config):
+    setup = None
+    try:
+        setup = json.loads(open(config['config_file']).read())
+    except OSError:
+        return TestResult(Result.SKIP, notes="Unable to find test config")
+
+    policy = setup['system_critical']['policy']
+    filelist = setup['system_critical']['paths']
+    predicate = lambda x: os.path.exists(x) and _is_elf(x)
+    return _check_binaries(policy, filelist, predicate)
