@@ -2,6 +2,7 @@ import glob
 import json
 import logging
 import os
+import subprocess
 import test_constants
 import test_config
 from test_config import ConfigNotFound
@@ -174,6 +175,8 @@ def get_sysctl_value(path):
 
 def running_processes():
     """
+    Use the /proc filesystem to determine a list of running processes.
+
     :returns: A list containing tuples of the pid of a running process
               and the executable file that launched it (if it exists).
     """
@@ -193,6 +196,8 @@ def running_processes():
 
 def executables_in_path():
     """
+    Search the current $PATH to create a list of all executable files.
+
     :returns: A list of all executables on the $PATH
     """
     logger = get_logger()
@@ -209,3 +214,89 @@ def executables_in_path():
 
     is_exec = lambda x: os.path.isfile(x) and os.access(x, os.X_OK)
     return [ x for x in executables if is_exec(x) ]
+
+
+def have_command(cmd):
+    """
+    Returns true if the specified command is availabe on the system
+    path.
+
+    :param cmd: The command to check for using 'which'
+    :returns: True if the supplied command is available on the path
+    """
+    logger = get_logger()
+    try:
+        null = open(os.devnull, 'w')
+        rc = subprocess.check_call(['which', cmd], stdout=null, stderr=null)
+        return rc == 0
+
+    except subprocess.CalledProcessError as err:
+        logger.debug("[*] {} not on $PATH".format(command))
+
+    return False
+
+
+def _extract_symbols(cmd):
+    """
+    Helper function to reduce code duplication. Only difference
+    in output of commands comes from the way the 'nm' command
+    is run.
+
+    :param cmd: The way to invoke 'nm' command.
+    :returns: Generated symbols resulting from nm invocation.
+    """
+    logger = get_logger()
+    try:
+        null = open(os.devnull, 'w')
+        entries = subprocess.check_output(cmd, stderr=null)
+        for entry in entries.split('\n'):
+            try:
+                values = entry.strip().split(' ')
+                # handle case:
+                #                  U __sprintf_chk@@GLIBC_2.3.4
+                if len(values) == 2:
+                    sym_addr = None
+                    sym_type, sym_name = values
+                # otherwise expect:
+                # 00000000004004b0 T main
+                else:
+                    sym_addr, sym_type, sym_name = entry.split(' ')
+
+                yield (sym_addr, sym_type, sym_name.split('@@')[0])
+            except ValueError as err:
+                logger.debug('[*] Unexpected output {' + entry.strip() + '}')
+
+    except subprocess.CalledProcessError as err:
+        logger.debug(err)
+
+
+def symbols_in_elf(path):
+    """
+    Generator to return the symbols within an ELF executable or
+    shared library. Output taken from the 'nm' command.
+
+    *NOTE* This will note return any results for stripped binaries.
+
+    :param path: The path of the executable or shared library to extract
+                 symbols from.
+
+    :returns: Generator that yields the symbols that are either
+              defined in, or referenced by a given ELF file.
+    """
+    return _extract_symbols(['nm', path])
+
+def symbols_in_dynsym(path):
+    """
+    Generator to return all the symbols within an ELF executable dynsym
+    section. These results will only include the symbols needed for
+    dynamic linking at runtime. This section will exists even when the
+    binary is stripped.  Essentially this is output taken from `nm -D`
+
+    :param path: The path of the executable to be examined.
+
+    :returns: Generator the yields the symbols in the .dynsym section
+              of the ELF binary.
+    """
+    return _extract_symbols(['nm', '-D', path])
+
+
