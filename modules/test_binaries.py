@@ -95,12 +95,77 @@ def _check_fortify(path):
         return False
 
     fortified = set([])
-    for addr, sym, name in utils.symbols_in_elf(libc):
+    for addr, sym, name in _symbols_in_elf(libc):
         if sym == 'T' and name.endswith('_chk'):
             fortified.add(name)
 
-    symbols = set([name for addr, sym, name in utils.symbols_in_dynsym(path)])
+    symbols = set([name for addr, sym, name in _symbols_in_dynsym(path)])
     return len(symbols.intersection(fortified)) > 0
+
+
+def _extract_symbols(cmd):
+    """
+    Helper function to reduce code duplication. Only difference
+    in output of commands comes from the way the 'nm' command
+    is run.
+
+    :param cmd: The way to invoke 'nm' command.
+    :returns: Generated symbols resulting from nm invocation.
+    """
+    logger = utils.get_logger()
+    try:
+        null = open(os.devnull, 'w')
+        entries = subprocess.check_output(cmd, stderr=null)
+        for entry in entries.split('\n'):
+            try:
+                values = entry.strip().split(' ')
+                # handle case:
+                #                  U __sprintf_chk@@GLIBC_2.3.4
+                if len(values) == 2:
+                    sym_addr = None
+                    sym_type, sym_name = values
+                # otherwise expect:
+                # 00000000004004b0 T main
+                else:
+                    sym_addr, sym_type, sym_name = entry.split(' ')
+
+                yield (sym_addr, sym_type, sym_name.split('@@')[0])
+            except ValueError as err:
+                logger.debug('[*] Unexpected output {' + entry.strip() + '}')
+
+    except subprocess.CalledProcessError as err:
+        logger.debug(err)
+
+
+def _symbols_in_elf(path):
+    """
+    Generator to return the symbols within an ELF executable or
+    shared library. Output taken from the 'nm' command.
+
+    *NOTE* This will note return any results for stripped binaries.
+
+    :param path: The path of the executable or shared library to extract
+                 symbols from.
+
+    :returns: Generator that yields the symbols that are either
+              defined in, or referenced by a given ELF file.
+    """
+    return _extract_symbols(['nm', path])
+
+
+def _symbols_in_dynsym(path):
+    """
+    Generator to return all the symbols within an ELF executable dynsym
+    section. These results will only include the symbols needed for
+    dynamic linking at runtime. This section will exists even when the
+    binary is stripped.  Essentially this is output taken from `nm -D`
+
+    :param path: The path of the executable to be examined.
+
+    :returns: Generator the yields the symbols in the .dynsym section
+              of the ELF binary.
+    """
+    return _extract_symbols(['nm', '-D', path])
 
 
 def _check_policy(context, policy, results):
