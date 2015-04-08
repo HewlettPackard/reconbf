@@ -8,7 +8,7 @@ from pprint import pprint
 from collections import defaultdict
 from lib import test_utils as utils
 from lib import test_class
-from lib.test_result import TestResult, Result
+from lib.test_result import TestResult, Result, GroupTestResult
 
 
 def _is_elf(path):
@@ -212,26 +212,28 @@ def _symbols_in_dynsym(path):
     return _extract_symbols(['nm', '-D', path])
 
 
-def _check_policy(context, policy, results):
+def _check_policy(context, policy, actual, results):
     log = utils.get_logger()
-    fmt = "{} does not meet {} policy. expected: {}, actual: {}"
-    violations = 0
+    fmt = "Expected: {} Actual: {}"
     for k in policy.keys():
-        if policy[k] != results[k]:
-            log.info(fmt.format(context, k, policy[k], results[k]))
-            violations += 1
-
-    note = "{} violations detected for {}".format(violations, context)
-    return (violations, note)
+        check = "[{:^12s}] {}".format(k, context)
+        if policy[k] != actual[k]:
+            exp = str(policy[k]).capitalize()
+            act = str(actual[k]).capitalize()
+            failure = fmt.format(exp, act)
+            results.add_result(check, TestResult(Result.FAIL, notes=failure))
+        else:
+            results.add_result(check, TestResult(Result.PASS))
 
 
 def _check_binaries(policy, filelist, predicate):
     if not utils.have_command("readelf") or not utils.have_command("nm"):
         return TestResult(Result.SKIP, notes="readelf needed for this test")
 
+    results = GroupTestResult()
     for path in filelist:
         if predicate(path):
-            results = {
+            actual = {
                 "relro":        _check_relro(path),
                 "pie":          _check_pie(path),
                 "stack_canary": _check_stack_canary(path),
@@ -239,11 +241,9 @@ def _check_binaries(policy, filelist, predicate):
                 "fortify":      _check_fortify(path),
                 "runpath":      _check_runpath(path)
             }
-            violations, summary = _check_policy(path, policy, results)
-            if violations > 0:
-                return TestResult(Result.FAIL, notes=summary)
+            _check_policy(path, policy, actual, results)
 
-    return TestResult(Result.PASS)
+    return results
 
 
 @test_class.takes_config
@@ -258,6 +258,9 @@ def _check_binaries(policy, filelist, predicate):
     hardening options enabled as possible.
     """)
 def test_setuid_files(config):
+    if not utils.have_command("readelf") or not utils.have_command("nm"):
+        return TestResult(Result.SKIP, notes="readelf needed for this test")
+
     setup = None
     try:
         setup = json.loads(open(config['config_file']).read())

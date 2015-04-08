@@ -266,6 +266,6 @@ def have_command(cmd):
         return rc == 0
 
     except subprocess.CalledProcessError as err:
-        logger.debug("[*] {} not on $PATH".format(command))
+        logger.debug("[*] {} not on $PATH".format(cmd))
 
     return False
