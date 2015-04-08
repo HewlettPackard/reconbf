@@ -20,8 +20,9 @@ class ValNotFound(Exception):
 def check_path_exists(path):
     '''
     Checks for the existence of a path
+
     :param path: The path to check
-    :return: True or False
+    :returns: True or False
     '''
     logger = get_logger()
     logger.debug("[*] Testing for existence of path { " + path + " }")
@@ -38,8 +39,9 @@ def check_path_exists(path):
 def get_stats_on_file(file_name):
     '''
     Return the os.stat value for the specified filename, or None if it fails.
+
     :param file_name: The filename to get stat for
-    :return: an os.stat return value
+    :returns: an os.stat return value
     '''
     logger = get_logger()
     logger.debug("[*] Retrieving permission for file { " + file_name + "}")
@@ -61,7 +63,7 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     :param base_path: The main path to start looking from
     :param subdirs: True/False- Recurse through subdirectories?
     :param files_only: True/False- List directories?
-    :return:
+    :returns:
     '''
     return_list = None
 
@@ -94,7 +96,8 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
 def get_logger():
     '''
     Used to get the constant logger
-    :return: The logger instance
+
+    :returns: The logger instance
     '''
     return logging.getLogger(test_constants.logger_name)
 
@@ -103,9 +106,10 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
     '''
     Used to load a JSON file which contains configuration, and return the
     specified object from it
+
     :param requirements_file: The configuration file to load
     :param requirements_id: The object to look for in the file
-    :return: The parsed object from the JSON file
+    :returns: The parsed object from the JSON file
     '''
     logger = get_logger()
     return_value = None
@@ -142,7 +146,8 @@ def get_sysctl_value(path):
     base sysctl path. Raises a ValNotFound exception if the setting can't
     be retrieved for some reason.
     :param path: The path relative to base sysctl of the setting to retrieve
-    :return: The value of the specified sysctl setting
+
+    :returns: The value of the specified sysctl setting
     '''
     logger = get_logger()
     logger.debug("[*] Testing for sysctl value { " + path + " }")
@@ -192,6 +197,37 @@ def running_processes():
         procs.append((pid, exe))
 
     return procs
+
+
+def is_service_running(service_name):
+    """
+    Use 'service <servicename> status' command to get the status of a service
+
+    :returns: Boolean indicating if the service is running
+    """
+
+    service_command = ['service', service_name, 'status']
+    service_running = False
+
+    run_indicator = 'Active: active (running)'
+
+    try:
+        service_status = subprocess.check_output(service_command)
+
+    # service command doesn't exist...
+    except OSError:
+        get_logger().error("[-] Unable to call service command")
+
+    except subprocess.CalledProcessError as e:
+        # this indicates service is not running
+        pass
+
+    else:
+        if run_indicator in service_status:
+            service_running = True
+
+    return service_running
+
 
 
 def executables_in_path():

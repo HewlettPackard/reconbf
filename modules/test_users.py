@@ -2,9 +2,14 @@ import lib.test_class as test_class
 import lib.test_utils as test_utils
 from lib.test_result import TestResult
 from lib.test_result import Result
-import grp
-import pwd
-import spwd
+
+try:
+    import grp
+    import pwd
+    import spwd
+except ImportError as e:
+    test_utils.get_logger().error("[-] Error importing module: " + e.message)
+
 import subprocess
 from collections import defaultdict
 

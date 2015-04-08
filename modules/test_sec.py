@@ -50,7 +50,6 @@ def test_shellshock(config):
             result = Result.PASS
         return TestResult(result, reason)
 
-@test_class.group_test
 @test_class.takes_config
 @test_class.explanation(
     """

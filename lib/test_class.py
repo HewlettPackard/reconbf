@@ -290,18 +290,6 @@ def explanation(exp):
     return decorate
 
 
-def group_test(func):
-    """Decorator to indicate that function is a group test
-
-    Example:
-        @group_test
-        def test_xyz(self):
-    """
-    # Just having the attribute indicates that it is a group test
-    func.is_group = None
-    return func
-
-
 def takes_config(func):
     """Decorator to indicate that function takes a config dictionary
 

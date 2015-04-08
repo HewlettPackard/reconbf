@@ -6,7 +6,6 @@ from lib.test_result import TestResult
 from lib.test_result import GroupTestResult
 from pwd import getpwuid
 
-@test_class.group_test
 @test_class.takes_config
 @test_class.explanation(
     """
