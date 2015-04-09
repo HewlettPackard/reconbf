@@ -2,6 +2,7 @@ import json
 import test_constants
 import test_config
 from test_config import ConfigNotFound
+from collections import defaultdict
 import test_utils
 
 """
@@ -72,10 +73,10 @@ class ResultDisplayType:
         pass
 
     # Used for indicating how to display/report test results
-    DISPLAY_ALL = 1           # Displays each test
-    DISPLAY_FAIL_ONLY = 2     # Displays each failed test and overall
+    DISPLAY_ALL = 4           # Displays each test
     DISPLAY_NOT_PASS = 3      # Displays each test which isn't pass (fail/skip)
-    DISPLAY_OVERALL_ONLY = 4  # Displays only overall result (skip group items)
+    DISPLAY_FAIL_ONLY = 2     # Displays each failed test and overall
+    DISPLAY_OVERALL_ONLY = 1  # Displays only overall result (skip group items)
 
 
 class TestResults:
@@ -134,66 +135,46 @@ class TestResults:
                     print result_string
 
             elif isinstance(res['result'], GroupTestResult):
-                # if this is a group test, we'll have to determine if the test
-                # passed or failed overall
-                parent_pass = True
-                parent_name = res['name']
-                group_result_list = res['result'].results
 
-                child_result_strings = list()
+                child_results = []
+                result_list = res['result'].results
+                found_results = defaultdict(lambda: False)
 
-                for result_item in group_result_list:
-                    # Determine if we should display this test based on the
-                    # ResultDisplayType selected
-                    if (_check_display_result(result_item['result'].result,
-                                              display_type)
-                            and display_type !=
-                            ResultDisplayType.DISPLAY_OVERALL_ONLY):
+                for child_res in result_list:
 
-                        res = result_item['result']
-                        result_string = _build_result_string(
-                            result_item['name'],
-                            res.result,
-                            res.notes,
+                    # indicate that we have seen this result type
+                    found_results[_result_text(
+                        child_res['result'].result)] = True
+
+                    # check if we should display, based on the display type
+                    if _check_display_result(child_res['result'].result,
+                                             display_type):
+
+                        child_results.append(_build_result_string(
+                            child_res['name'],
+                            child_res['result'].result,
+                            child_res['result'].notes,
                             use_color,
                             term_colors,
-                            True)
+                            True
+                        ))
 
-                        child_result_strings.append(result_string)
-                    # Note: Skips don't cause parent to fail
-                    if result_item['result'].result == Result.FAIL:
-                        parent_pass = False
-
-                if parent_pass:
-                    if len(group_result_list) > 0:
-                        parent_result = Result.PASS
-                    # if no tests were actually run, eg. the test had a problem
-                    else:
-                        parent_result = Result.SKIP
-                else:
+                if found_results['FAIL']:
                     parent_result = Result.FAIL
+                else:
+                    parent_result = Result.PASS
 
-                # this is a little complicated, but basically we need to check
-                # for three conditions: 1) normal display conditions,
-                # 2) if we're displaying overall, always display parent status,
-                # 3) if we're showing all not-passes and one of the children
-                # was a non-pass, then display the parent
-                if (_check_display_result(parent_result, display_type) or
-                        display_type ==
-                        ResultDisplayType.DISPLAY_OVERALL_ONLY or
-                        (display_type ==
-                         ResultDisplayType.DISPLAY_NOT_PASS and
-                         len(child_result_strings) > 0)):
+                # build the parent string
+                parent_string = _build_result_string(
+                    res['name'],
+                    parent_result,
+                    "",
+                    use_color,
+                    term_colors,
+                    False)
+                print parent_string
 
-                    result_string = _build_result_string(parent_name,
-                                                         parent_result, "",
-                                                         use_color,
-                                                         term_colors,
-                                                         False)
-
-                    print result_string
-
-                for child_string in child_result_strings:
+                for child_string in child_results:
                     print child_string
 
         print '\n'
@@ -215,6 +196,7 @@ class TestResults:
         logger = test_utils.get_logger()
         logger.info("[*] Preparing to write CSV file { " + filename + " }")
 
+        # TODO: Fix write CSV to use a real CSV library
         # TODO: Fix write CSV to reflect new results list structure
 
         # Create the header row
@@ -266,10 +248,12 @@ class TestResults:
         for test in self._results:
             cur_test = dict()
             cur_test['name'] = test['name']
+
             if isinstance(test['result'], TestResult):
                 cur_test['result'] = _result_text(test['result'].result)
                 cur_test['notes'] = test['result'].notes
                 tests.append(cur_test)
+
             elif isinstance(test['result'], GroupTestResult):
                 results = []
                 for ind_result in test['result'].results:
@@ -397,19 +381,23 @@ def _check_display_result(result, display_mode):
     :param display_mode: The display mode
     :returns: True/False indicating whether the result should be shown
     """
-    display_result = False
+
     # if we're displaying everything, display
     if display_mode == ResultDisplayType.DISPLAY_ALL:
-        display_result = True
+        return True
+
     # if we're displaying anything which failed and this failed
-    elif (display_mode == ResultDisplayType.DISPLAY_FAIL_ONLY and
-          result == Result.FAIL):
-        display_result = True
+    elif(result == Result.FAIL and display_mode >=
+            ResultDisplayType.DISPLAY_FAIL_ONLY):
+        return True
+
     # if we're displaying anything which isn't pass, and this is skip or fail
-    elif (display_mode == ResultDisplayType.DISPLAY_NOT_PASS and
-            (result == Result.FAIL or result == Result.SKIP)):
-        display_result = True
-    return display_result
+    elif(result == Result.SKIP and display_mode >=
+            ResultDisplayType.DISPLAY_NOT_PASS):
+        return True
+
+    else:
+        return False
 
 
 def _get_term_colors():
