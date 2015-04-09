@@ -7,26 +7,20 @@ from lib.test_result import TestResult
 from lib.test_result import Result
 from lib.test_utils import ValNotFound
 
-@test_class.tag("software", "system")
+
+@test_class.takes_config
 @test_class.explanation(
     """
-    AppArmor should be installed in order to confine applications to the
-    least required privileges required to run them.
+    Protection name: Bash not vulnerable to shellshock
+
+    Check: Runs shellshock test payload and validates output
+
+    Purpose: A version of bash on the system which is vulnerable to shellshock
+    can expose the system to many types of attacks.  There is no good way to
+    take stock of how many processes running on they system use Bash in a
+    potentially vulnerable way, so the only way to prevent exploitation is to
+    use a version of bash which has been patched.
     """)
-def test_app_armor_installed():
-    expected = True
-    actual = test_utils.check_path_exists('/sys/kernel/security/apparmor')
-
-    if expected == actual:
-        result = Result.PASS
-    else:
-        result = Result.FAIL
-
-    return TestResult(result)
-
-
-@test_class.tag("vulnerability", "system")
-@test_class.takes_config
 def test_shellshock(config):
     logger = test_utils.get_logger()
     logger.debug("[*] Testing shell for 'shellshock/bashbug' vulnerability.")
@@ -50,14 +44,19 @@ def test_shellshock(config):
             result = Result.PASS
         return TestResult(result, reason)
 
+
 @test_class.takes_config
 @test_class.explanation(
     """
-    Sysctl is used to configure kernel parameters. Many of these parameters
-    can be used to tune and harden the security of a system. This check
-    verifies that secure values have been used where applicable.
+    Protection name: Sysctl settings set securely
+
+    Check: Validates that sysctl values are set as specified in the
+    configuration file.
+
+    Purpose: Sysctl is used to configure kernel parameters. Many of these
+    parameters can be used to tune and harden the security of a system. This
+    check verifies that secure values have been used where applicable.
     """)
-@test_class.tag("system", "kernel")
 def test_sysctl_values(config):
     logger = test_utils.get_logger()
     results = GroupTestResult()
@@ -96,8 +95,8 @@ def test_sysctl_values(config):
                 else:
                     test_name = "Sysctl check for " + requirement['key']
 
-                allowed_value_string = requirement['allowed_values'].replace(' ','')
-                allowed_values = allowed_value_string.split(',')
+                val_str = requirement['allowed_values'].replace(' ', '')
+                allowed_values = val_str.split(',')
 
                 try:
                     value = test_utils.get_sysctl_value(requirement['key'])
@@ -111,7 +110,7 @@ def test_sysctl_values(config):
                     else:
                         cur_result = Result.FAIL
                         notes = "Key { " + requirement['key']
-                        notes += " } expected one of { " + allowed_value_string
+                        notes += " } expected one of { " + val_str
                         notes += " } but got " + value
                 results.add_result(test_name,
                                    TestResult(cur_result, notes=notes))

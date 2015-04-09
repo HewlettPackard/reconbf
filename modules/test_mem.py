@@ -5,11 +5,13 @@ from lib.test_result import Result
 from subprocess import Popen, PIPE, check_output
 import gzip
 
-@test_class.tag("software", "system", "kernel")
+
 @test_class.explanation(
     """
     Protection name: NX (No-eXecute) protection is enabled
+
     Check: First line in the system dmesg indicates if it is enabled
+
     Purpose: The NX bit indicates if the architecture has marked
     specific areas of memory as non-executable (known as executable
     space protection) and helps preventing certain types of buffer
@@ -17,11 +19,8 @@ import gzip
     """)
 def test_NX():
     logger = test_utils.get_logger()
-    result = " "
     logger.debug("[*] Checking if NX (or NX emulation) is present.")
 
-    # TM: temp removing try here, since it had no matching except
-    # try:
     output = check_output(["dmesg"])
     if 'NX (Execute Disable) protection: active' in output:
         reason = "NX protection active in BIOS."
@@ -37,16 +36,17 @@ def test_NX():
     return TestResult(result, reason)
 
 
-@test_class.tag("system", "kernel", "memory")
 @test_class.explanation(
     """
-    Protection: /dev/mem device blocks non-device access
+    Protection name: /dev/mem device blocks non-device access
+
     Check: in /proc/config.gz the CONFIG_STRICT_DEVMEM line is
     uncommented and set to equal 'y'
+
     Purpose: Some applications are built to require access to physical
     memory in the user-space (such as X windows), which was provided
     by the /dev/mem device. This check ensures that only other devices
-    have access to the kernel memory, and thus does not allow a 
+    have access to the kernel memory, and thus does not allow a
     malicious user or program the ability to view or change data.
     """)
 def test_devmem():
@@ -54,11 +54,11 @@ def test_devmem():
     reason = " "
     logger = test_utils.get_logger()
     logger.debug("[*] Attempting to validate /dev/mem protection.")
-    result = Result.FAIL # set fail by default?
+    result = Result.FAIL  # set fail by default?
 
     # check /proc/config.gz - CONFIG_STRICT_DEVMEM=y
     try:
-        proc_config = gzip.open('/proc/config.gz','rb')
+        proc_config = gzip.open('/proc/config.gz', 'rb')
         kernel_cfg = proc_config.read()
 
         if "CONFIG_STRICT_DEVMEM=y" in kernel_cfg:
@@ -67,7 +67,7 @@ def test_devmem():
             result = Result.PASS
         elif "CONFIG_STRICT_DEVMEM=n" in kernel_cfg:
             reason = "/dev/mem protection is not enabled."
-            logger.debug("[-] "+ reason)
+            logger.debug("[-] " + reason)
             result = Result.FAIL
 
     except IOError as e:

@@ -41,11 +41,12 @@ class Config:
             self._config = json_data
 
     def get_config(self, config_path):
-        '''
+        """
         Function will return a specified section of json or value
+
         :param config_path: Path in JSON document to desired bit
-        :return: Value or section of data
-        '''
+        :returns: Value or section of data
+        """
         levels = config_path.split('.')
 
         cur_item = self._config
@@ -58,5 +59,3 @@ class Config:
                 raise ConfigNotFound
 
         return cur_item
-
-

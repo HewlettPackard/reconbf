@@ -84,24 +84,26 @@ class TestResults:
         self._results = results_list
 
     def add_results(self, new_results):
-        '''
+        """
         Used for adding a list of one or more TestResult or GroupTestResult
         instances to the set.
+
         :param new_results: A list of items to append to the list
-        :return: None
-        '''
+        :returns: None
+        """
         for result in new_results:
             self._results.append(result)
 
     def display_on_terminal(self, use_color=True,
                             display_type=ResultDisplayType.DISPLAY_NOT_PASS):
-        '''
+        """
         Pretty display of results on terminal
+
         :param use_color: (Optional) Boolean indicating whether to use color
         :param display_type: (Optional) ResultDisplayType indicating which
         results to display.
-        :return: -
-        '''
+        :returns: -
+        """
 
         term_colors = _get_term_colors()
 
@@ -113,28 +115,30 @@ class TestResults:
               'Notes')
         print '=' * 80
 
-        for cur_result in self._results:
-            if isinstance(cur_result['result'], TestResult):
+        for res in self._results:
+            if isinstance(res['result'], TestResult):
                 # Handle single result case
 
                 # decide whether to display, based on mode
-                if (_check_display_result(cur_result['result'].result,
+                if (_check_display_result(res['result'].result,
                                           display_type)
-                        or display_type == ResultDisplayType.DISPLAY_OVERALL_ONLY):
+                        or display_type ==
+                        ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
-                    result_string = _build_result_string(cur_result['name'],
-                                                         cur_result['result'].result,
-                                                         cur_result['result'].notes,
-                                                         use_color, term_colors,
+                    result_string = _build_result_string(res['name'],
+                                                         res['result'].result,
+                                                         res['result'].notes,
+                                                         use_color,
+                                                         term_colors,
                                                          False)
                     print result_string
 
-            elif isinstance(cur_result['result'], GroupTestResult):
+            elif isinstance(res['result'], GroupTestResult):
                 # if this is a group test, we'll have to determine if the test
                 # passed or failed overall
                 parent_pass = True
-                parent_name = cur_result['name']
-                group_result_list = cur_result['result'].results
+                parent_name = res['name']
+                group_result_list = res['result'].results
 
                 child_result_strings = list()
 
@@ -143,15 +147,17 @@ class TestResults:
                     # ResultDisplayType selected
                     if (_check_display_result(result_item['result'].result,
                                               display_type)
-                            and display_type != ResultDisplayType.DISPLAY_OVERALL_ONLY):
+                            and display_type !=
+                            ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
                         res = result_item['result']
-                        result_string = _build_result_string(result_item['name'],
-                                                             res.result,
-                                                             res.notes,
-                                                             use_color,
-                                                             term_colors,
-                                                             True)
+                        result_string = _build_result_string(
+                            result_item['name'],
+                            res.result,
+                            res.notes,
+                            use_color,
+                            term_colors,
+                            True)
 
                         child_result_strings.append(result_string)
                     # Note: Skips don't cause parent to fail
@@ -170,16 +176,19 @@ class TestResults:
                 # this is a little complicated, but basically we need to check
                 # for three conditions: 1) normal display conditions,
                 # 2) if we're displaying overall, always display parent status,
-                # 3) if we're showing all not-passes and one of the children was
-                # a non-pass, then display the parent
+                # 3) if we're showing all not-passes and one of the children
+                # was a non-pass, then display the parent
                 if (_check_display_result(parent_result, display_type) or
-                        display_type == ResultDisplayType.DISPLAY_OVERALL_ONLY or
-                        (display_type == ResultDisplayType.DISPLAY_NOT_PASS and
-                             len(child_result_strings) > 0)):
+                        display_type ==
+                        ResultDisplayType.DISPLAY_OVERALL_ONLY or
+                        (display_type ==
+                         ResultDisplayType.DISPLAY_NOT_PASS and
+                         len(child_result_strings) > 0)):
 
                     result_string = _build_result_string(parent_name,
                                                          parent_result, "",
-                                                         use_color, term_colors,
+                                                         use_color,
+                                                         term_colors,
                                                          False)
 
                     print result_string
@@ -190,7 +199,7 @@ class TestResults:
         print '\n'
 
     def write_csv(self, filename, separator_char=test_constants.csv_separator):
-        '''
+        """
         Create a CSV file in the specified location with an optionally
         specified separator, default: '|'
 
@@ -202,7 +211,7 @@ class TestResults:
         :param filename: The file to write
         :param separator_char: (optional) Separator character for fields
         :return: -
-        '''
+        """
         logger = test_utils.get_logger()
         logger.info("[*] Preparing to write CSV file { " + filename + " }")
 
@@ -241,14 +250,14 @@ class TestResults:
                         + "successful!")
 
     def write_json(self, filename):
-        '''
+        """
         Create a JSON file in the specified location
 
         The fields are test name, result, and notes if they exist
 
         :param filename:
-        :return: -
-        '''
+        :returns: -
+        """
         logger = test_utils.get_logger()
         logger.info("[*] Preparing to write JSON file { " + filename + " }")
 
@@ -306,12 +315,13 @@ class GroupTestResult():
         self._results_list = list()
 
     def add_result(self, name, result):
-        '''
+        """
         Add a new result to the group test results list
+
         :param name: Descriptive name of this test
         :param result: A TestResult indicating the result of the test
-        :return: -
-        '''
+        :returns: -
+        """
         new_result = dict()
         new_result['name'] = name
         new_result['result'] = result
@@ -319,23 +329,25 @@ class GroupTestResult():
 
     @property
     def results(self):
-        '''
+        """
         Property to get the class results_list
-        :return: The results list
-        '''
+
+        :returns: The results list
+        """
         return self._results_list
 
 
 def _build_result_string(name, result, notes, use_color, term_colors, indent):
-        '''
+        """
         Internal utility function to build a result string
+
         :param name: Name of test
         :param result: Enum indicating the status of the test
         :param notes: Associated with the test
         :param use_color: Boolean indicating whether color should be displayed
         :param indent: Boolean indicating if test name should be indented
-        :return:
-        '''
+        :returns:
+        """
 
         # Set the output color and text result based on test result
         result_color = ""
@@ -377,13 +389,14 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent):
 
 
 def _check_display_result(result, display_mode):
-    '''
+    """
     Based on the display mode and the result, determine if a result should be
     shown.
+
     :param result: The test result
     :param display_mode: The display mode
-    :return: True/False indicating whether the result should be shown
-    '''
+    :returns: True/False indicating whether the result should be shown
+    """
     display_result = False
     # if we're displaying everything, display
     if display_mode == ResultDisplayType.DISPLAY_ALL:
@@ -394,7 +407,7 @@ def _check_display_result(result, display_mode):
         display_result = True
     # if we're displaying anything which isn't pass, and this is skip or fail
     elif (display_mode == ResultDisplayType.DISPLAY_NOT_PASS and
-         (result == Result.FAIL or result == Result.SKIP)):
+            (result == Result.FAIL or result == Result.SKIP)):
         display_result = True
     return display_result
 

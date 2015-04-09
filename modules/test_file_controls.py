@@ -6,13 +6,19 @@ from lib.test_result import TestResult
 from lib.test_result import GroupTestResult
 from pwd import getpwuid
 
+
 @test_class.takes_config
 @test_class.explanation(
     """
-    In following the principle of least privilege, files should be restricted
-    to only allow the bare minimum permissions required to allow them to
-    function properly.  The ability for untrusted or less trusted users to
-    access and/or modify important files can lead to vulnerabilities such as
+    Protection name: Restrictive file system controls
+
+    Check: Checks files specified in the configuration file and ensures that
+    they do not have specified permissions.
+
+    Purpose: In following the principle of least privilege, files should be
+    restricted to only allow the bare minimum permissions required to allow
+    them to function properly.  The ability for untrusted or less trusted users
+    to access and/or modify important files can lead to vulnerabilities such as
     information disclosure and privilege escalation.
 
     Furthermore, the owner and group must be checked for critical files to
@@ -25,7 +31,6 @@ from pwd import getpwuid
     permissions are found the test fails and displays the extra permissions
     found.
     """)
-@test_class.tag("system")
 def test_perms_and_ownership(config):
 
     results = GroupTestResult()
@@ -68,8 +73,8 @@ def test_perms_and_ownership(config):
                                                   req['disallowed_perms'])
                     if result.result == Result.SKIP:
                         logger = test_utils.get_logger()
-                        logger.info("[-] Got malformed permission requirement: " +
-                                    req['disallowed_perms'])
+                        logger.info("[-] Got malformed permission " +
+                                    "requirement: " + req['disallowed_perms'])
 
                     results.add_result(check_name, result)
 
@@ -100,10 +105,14 @@ def test_perms_and_ownership(config):
 @test_class.takes_config
 @test_class.explanation(
     """
-    Permissions must be carefully checked on startup scripts, otherwise a
-    malicious user may exploit them to run commands as root.
+    Protection name: Permissions on startup scripts
+
+    Check: All files in the startup script directory do not have specified
+    level of permissions granted.
+
+    Purpose: Permissions must be carefully checked on startup scripts,
+    otherwise a malicious user may exploit them to run commands as root.
     """)
-@test_class.tag("system")
 def test_perms_on_startup_scripts(config):
     test_result = Result.PASS
     notes = ""
@@ -162,16 +171,16 @@ def _does_owner_group_meet_req(stats, owners=None, groups=None):
     notes = ""
 
     if owners:
-        owners_list = owners.replace(' ','').split(',')
+        owners_list = owners.replace(' ', '').split(',')
         file_owner = getpwuid(stats.st_uid).pw_name
-        if not file_owner in owners_list:
+        if file_owner not in owners_list:
             test_passed = False
             notes += "owner: " + file_owner
 
     if groups:
         groups_list = groups.replace(' ', '').split(',')
         file_group = getgrgid(stats.st_gid).gr_name
-        if not file_group in groups_list:
+        if file_group not in groups_list:
             test_passed = False
             if notes != "":
                 notes += ", "
@@ -185,24 +194,23 @@ def _does_owner_group_meet_req(stats, owners=None, groups=None):
     return TestResult(test_status, notes)
 
 
-
-
 def _does_perms_meet_req(stats, disallowed_perms):
-    '''
+    """
     Checks a files permissions against a permission requirement
+
     :param stats: Stat object of a file returned by stat
     :param disallowed_perms: A string representing unix style permissions that
     the file should NOT have.
 
-    Example: w,rwx,rwx means that the owner should not have write access and all
-    other users and groups should have no access.
+    Example: w,rwx,rwx means that the owner should not have write access and
+    all other users and groups should have no access.
 
     Example: ,,rw means that the file should not have world readable or
     writeable access.
 
-    :return: A TestResult object containing the result and notes explaining why
-    it didn't pass.
-    '''
+    :returns: A TestResult object containing the result and notes explaining
+    why it didn't pass.
+    """
 
     logger = test_utils.get_logger()
 
@@ -221,7 +229,8 @@ def _does_perms_meet_req(stats, disallowed_perms):
     # which represent user, group, and world.
     # If we didn't get 3 sections, it's malformed - pass the test with a note
     if len(sections) is not 3:
-        return_result = TestResult(Result.SKIP, notes="Malformed permission req")
+        return_result = TestResult(Result.SKIP,
+                                   notes="Malformed permission req")
     else:
         did_pass = True
         reason = ""
@@ -256,5 +265,3 @@ def _does_perms_meet_req(stats, disallowed_perms):
             return_result = TestResult(Result.FAIL, notes=reason)
 
     return return_result
-
-

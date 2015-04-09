@@ -13,14 +13,21 @@ except ImportError as e:
 import subprocess
 from collections import defaultdict
 
-@test_class.tag("system", "config", "users")
+
 @test_class.explanation(
     """
-    Every user account should either have a password set or be disabled.  One
-    common way for attackers to gain access to a system is to enumerate typical
-    user accounts and try to log in with usual credentials, or even without
-    credentials.  By ensuring all accounts have passwords or are disabled, it
-    makes it harder for an attacker to gain a foothold in the system.
+    Protection name: Accounts with no password
+
+    Check: Lists how many accounts are lockerd, disabled, and have no password
+    set.  Will fail for, and list, any accounts which are found with no
+    password.
+
+    Purpose: Every user account should either have a password set or be
+    disabled. One common way for attackers to gain access to a system is to
+    enumerate typical user accounts and try to log in with usual credentials,
+    or even without credentials.  By ensuring all accounts have passwords or
+    are disabled, it makes it harder for an attacker to gain a foothold in the
+    system.
     """)
 def test_accounts_nopassword():
     disabled = []
@@ -56,14 +63,18 @@ def test_accounts_nopassword():
     return TestResult(test_result, notes)
 
 
-@test_class.tag("system", "config", "users")
 @test_class.explanation(
     """
-    Sudoers can provide a path for privilege escalation.  It is very important
-    to keep close track of which users have sudo privileges.  In particular,
-    users which have sudo privilege without requiring a password (NOPASSWD),
-    can provide attackers with an easy path to obtain root level access to a
-    system.
+    Protection name: List sudoers
+
+    Check: Lists all users that are lister in sudoers.  Fail if any of the
+    users have sudo access with NOPASSWD.
+
+    Purpose: Sudoers can provide a path for privilege escalation.  It is very
+    important to keep close track of which users have sudo privileges.  In
+    particular, users which have sudo privilege without requiring a password
+    (NOPASSWD), can provide attackers with an easy path to obtain root level
+    access to a system.
     """)
 def test_list_sudoers():
     # these can be moved to config if there is a good reason somebody would
@@ -118,7 +129,6 @@ def test_list_sudoers():
     return TestResult(result, notes)
 
 
-@test_class.tag("system", "config", "users")
 @test_class.explanation(
     """
     Protection name: Unique user names and IDs
@@ -182,7 +192,6 @@ def test_unique_user():
     return TestResult(result, notes)
 
 
-@test_class.tag("system", "config", "users")
 @test_class.explanation(
     """
     Protection name: Unique group names and IDs
@@ -196,7 +205,6 @@ def test_unique_user():
     avoid granting access to unintended groups, both the group name and group
     ID should be unique for each group.
     """)
-
 def test_unique_group():
     grp_entries = grp.getgrall()
     gids = defaultdict(list)

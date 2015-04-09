@@ -4,8 +4,8 @@ from lib.test_result import Result
 from lib.test_result import TestResult
 from lib.test_result import GroupTestResult
 
+
 @test_class.takes_config
-@test_class.tag("software", "system")
 @test_class.explanation(
     """
     Protection name: Running services
@@ -66,6 +66,7 @@ def test_running_services(config):
 
     return TestResult(Result.SKIP, "Invalid test configuration")
 
+
 def _check_valid_req(req):
     """
     Utility function to check if a requirement entry in the config file is
@@ -80,7 +81,7 @@ def _check_valid_req(req):
         should cause the test to fail or just note the results
 
     :param req: Requirement dictionary parsed from JSON in the config file
-    :return: None if the requirement is not valid, otherwise True
+    :returns: None if the requirement is not valid, otherwise True
     """
 
     logger = test_utils.get_logger()
@@ -97,14 +98,17 @@ def _check_valid_req(req):
         return None
 
     elif req['expected'] not in ['on', 'off']:
-        logger.error("[-] Expected value of 'on' or 'off' for 'expected': " + req)
+        logger.error("[-] Expected value of 'on' or 'off' for 'expected': " +
+                     req)
         return None
 
     elif req['match'] not in ['all', 'one']:
-        logger.error("[-] Expected value of 'all' or 'one' for 'match': " + req)
+        logger.error("[-] Expected value of 'all' or 'one' for 'match': " +
+                     req)
 
     elif req['fail'] not in ['True', 'False']:
-        logger.error("[-] Expected value of 'True' or 'False' for 'fail': " + req)
+        logger.error("[-] Expected value of 'True' or 'False' for 'fail': " +
+                     req)
 
     else:
         return True

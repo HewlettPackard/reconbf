@@ -31,7 +31,6 @@ def main():
     if args.script_file is not None:
         test_set.set_script(args.script_file)
 
-    test_set.reduce_to_tags(args.tags)
     logger.info("[+] Selected { " + str(test_set.count) + " } test cases")
 
     results = test_set.run()
@@ -121,12 +120,6 @@ def _parse_args():
     parser.add_argument('-s', '--script', dest='script_file', action='store',
                         default=None, type=str, help='run tests from a script '
                                                      'file')
-
-    parser.add_argument('-t', '--tags', dest='tags', action='store',
-                        default=[], type=str, nargs='+',
-                        help='only run tests which match specified tags, ' +
-                             'multiple space (" ") separated tags can be ' +
-                             'listed')
 
     parser.add_argument('-l' '--level', dest='level', action='store',
                         choices=['debug', 'info', 'error'], default='info',

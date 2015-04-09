@@ -18,12 +18,12 @@ class ValNotFound(Exception):
 
 
 def check_path_exists(path):
-    '''
+    """
     Checks for the existence of a path
 
     :param path: The path to check
     :returns: True or False
-    '''
+    """
     logger = get_logger()
     logger.debug("[*] Testing for existence of path { " + path + " }")
 
@@ -37,12 +37,12 @@ def check_path_exists(path):
 
 
 def get_stats_on_file(file_name):
-    '''
+    """
     Return the os.stat value for the specified filename, or None if it fails.
 
     :param file_name: The filename to get stat for
     :returns: an os.stat return value
-    '''
+    """
     logger = get_logger()
     logger.debug("[*] Retrieving permission for file { " + file_name + "}")
 
@@ -58,13 +58,14 @@ def get_stats_on_file(file_name):
 
 
 def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
-    '''
+    """
     Utility function used to find all descendants of a base path
+
     :param base_path: The main path to start looking from
     :param subdirs: True/False- Recurse through subdirectories?
     :param files_only: True/False- List directories?
     :returns:
-    '''
+    """
     return_list = None
 
     logger = get_logger()
@@ -94,23 +95,23 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
 
 
 def get_logger():
-    '''
+    """
     Used to get the constant logger
 
     :returns: The logger instance
-    '''
+    """
     return logging.getLogger(test_constants.logger_name)
 
 
 def get_reqs_from_file(requirements_file, requirements_id="requirements"):
-    '''
+    """
     Used to load a JSON file which contains configuration, and return the
     specified object from it
 
     :param requirements_file: The configuration file to load
     :param requirements_id: The object to look for in the file
     :returns: The parsed object from the JSON file
-    '''
+    """
     logger = get_logger()
     return_value = None
 
@@ -126,8 +127,8 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
                      requirements_file + " } for reading!")
         raise EnvironmentError
     except ValueError:
-        logger.error("[-] File { " + requirements_file + " } does not appear " +
-                     "to be valid JSON.")
+        logger.error("[-] File { " + requirements_file + " } does not " +
+                     "appear to be valid JSON.")
         raise ValueError
     else:
         if requirements_id in json_data:
@@ -141,14 +142,14 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
 
 
 def get_sysctl_value(path):
-    '''
+    """
     Used to retrieve the value of a sysctl setting.  Uses a configurable
     base sysctl path. Raises a ValNotFound exception if the setting can't
     be retrieved for some reason.
-    :param path: The path relative to base sysctl of the setting to retrieve
 
+    :param path: The path relative to base sysctl of the setting to retrieve
     :returns: The value of the specified sysctl setting
-    '''
+    """
     logger = get_logger()
     logger.debug("[*] Testing for sysctl value { " + path + " }")
 
@@ -158,7 +159,6 @@ def get_sysctl_value(path):
         sysctl_path = config.get_config("paths.sysctl_path")
     except ConfigNotFound:
         sysctl_path = test_constants.sysctl_path
-
 
     value = None
     file_path = sysctl_path + "/" + path
@@ -229,7 +229,6 @@ def is_service_running(service_name):
     return service_running
 
 
-
 def executables_in_path():
     """
     Search the current $PATH to create a list of all executable files.
@@ -249,7 +248,7 @@ def executables_in_path():
             executables.extend([os.path.join(path, f) for f in files])
 
     is_exec = lambda x: os.path.isfile(x) and os.access(x, os.X_OK)
-    return [ x for x in executables if is_exec(x) ]
+    return [x for x in executables if is_exec(x)]
 
 
 def have_command(cmd):

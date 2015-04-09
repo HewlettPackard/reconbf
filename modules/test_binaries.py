@@ -184,10 +184,7 @@ def _check_policy(context, policy, results):
 @test_class.takes_config
 @test_class.explanation("""
 
-    Protection: Security hardened binaries
-
-    Purpose: Determines which configured setuid processes
-    have been built with various security hardening options.
+    Protection name: Security hardened binaries
 
     Status: Experimental
 
@@ -226,6 +223,9 @@ def _check_policy(context, policy, results):
     Check: Run Path - Baking in a fixed run path to shared libraries
     can leave executables open to various attacks. This detects
     binaries that have either rpath or runpath enabled.
+
+    Purpose: Determines which configured setuid processes
+    have been built with various security hardening options.
     """)
 def test_setuid_files(config):
     if not utils.have_command("readelf") or not utils.have_command("nm"):

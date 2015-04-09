@@ -20,7 +20,7 @@ For each test we will store:
 
 A typical workflow will be:
   1) Load tests into the class with add_from_directory
-  2) Optionally prune the tests with methods like reduce_to_tags and set_script
+  2) Optionally prune the tests with methods like set_script
   3) Run the tests which are left after pruning
 """
 
@@ -48,16 +48,18 @@ class TestSet():
     def tests(self):
         return self._tests
 
-    def add_from_directory(self, directory, file_pat='test*.py', fn_name_pat='test_'):
-        '''
+    def add_from_directory(self, directory, file_pat='test*.py',
+                           fn_name_pat='test_'):
+        """
         Adds all tests from a specified directory that match optional pattern
         to the current test set.
+
         :param directory: The directory to search for tests in
         :param file_pat: (Optional) File name glob
         :param fn_name_pat: (Optional) Indicates a file pattern which must
         match for a module file in the directory to be loaded
         :return: None
-        '''
+        """
 
         logger = test_utils.get_logger()
 
@@ -115,35 +117,12 @@ class TestSet():
 
         self._tests = _sort_tests(test_list, SortType.MODULE_ALPHABETIC)
 
-    def reduce_to_tags(self, tags):
-        '''
-        Filter the current test set to one or more specified tags.  Will only
-        keep a test if it has tags that match specified tags.
-        :param tags: List of one or more tags to filter on
-        :return: None
-        '''
-        # If tags is a non-empty list
-        if isinstance(tags, list) and len(tags) > 0:
-            new_tests = list()
-            for test in self._tests:
-                # Go through each test and check if it matches specified tags
-                matched = False
-                if hasattr(test['function'], 'tags'):
-                    func_tags = test['function'].tags
-                    for tag in tags:
-                        if tag.strip() in func_tags:
-                            matched = True
-                            break
-                # If it matches then add it to the new list
-                if matched:
-                    new_tests.append(test)
-            self._tests = new_tests
-
     def run(self):
-        '''
+        """
         Run all tests in this TestSet and return results
-        :return: Tuple containing qualified test name and result
-        '''
+
+        :returns: Tuple containing qualified test name and result
+        """
         results = list()
         for test in self._tests:
             cur_result = dict()
@@ -160,15 +139,17 @@ class TestSet():
                     conf = config.get_config('modules.' + test_name)
                 except ConfigNotFound:
                     logger = test_utils.get_logger()
-                    logger.error("[-] Test {" + test_name + "} requires config "
-                                 "but config could not be found.  Skipping...")
+                    logger.error("[-] Test {" + test_name + "} requires " +
+                                 "config but config could not be found.  " +
+                                 "Skipping...")
                 else:
                     try:
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
                     except Exception as e:
                         logger = test_utils.get_logger()
-                        logger.error("[-] Exception in test {" + test_name + "}: " + e.message)
+                        logger.error("[-] Exception in test {" + test_name +
+                                     "}: " + e.message)
 
             else:
                 try:
@@ -176,7 +157,8 @@ class TestSet():
                 # catch anything that goes wrong with a test
                 except Exception as e:
                     logger = test_utils.get_logger()
-                    logger.error("[-] Exception in test {" + test_name + "}: " + e.message)
+                    logger.error("[-] Exception in test {" + test_name +
+                                 "}: " + e.message)
 
             # If the test actually ran...
             if test_result:
@@ -191,12 +173,13 @@ class TestSet():
         return TestResults(results)
 
     def set_script(self, script_file):
-        '''
+        """
         This method takes a script file, and sets the test set to run specified
         tests in the order listed in the script.
+
         :param script_file: File to use for script
-        :return: -
-        '''
+        :returns: -
+        """
 
         script_lines = []
         new_test_set = []
@@ -208,7 +191,8 @@ class TestSet():
             script_f.close()
 
         except IOError:
-            logger.error("[-] Unable to open script file { " + script_file + " }")
+            logger.error("[-] Unable to open script file { " + script_file +
+                         " }")
             sys.exit(2)
 
         else:
@@ -225,20 +209,21 @@ class TestSet():
         logger.info("[+] Loaded script { " + script_file + " }")
         self._tests = new_test_set
 
-    def _find_test_by_can_name(self, module_name):
-        '''
+    def _find_test_by_can_name(self, module_str):
+        """
         Find a test by it's canonical name: module name + '.' + test name
-        :return: The test dictionary for specified test
-        '''
+
+        :returns: The test dictionary for specified test
+        """
 
         logger = test_utils.get_logger()
 
         # module name is the part before the . , test name is the part after
-        module_ids = module_name.split('.')
+        module_ids = module_str.split('.')
 
         # if we don't have a well-formed canonical name, don't try to find it
         if len(module_ids) != 2:
-            logger.error("[-] Malformed script line: { " + line + " }")
+            logger.error("[-] Malformed script line: { " + module_str + " }")
             return None
 
         for test in self._tests:
@@ -262,27 +247,13 @@ def _sort_tests(sort_list, sort_type):
     return sorted_list
 
 
-def tag(*tags):
-    """Decorator to add tags to test functions.
-
-    Example:
-        @testutils.tag("kernel")
-        def test_xyz(self):
-    """
-    def decorate(f):
-        if not hasattr(f, "tags"):
-            f.tags = []
-        f.tags += tags
-        return f
-    return decorate
-
-
 def explanation(exp):
     """
     Decorator to add an explanation for why a test is important from a
     security perspective
+
     :param exp: String explanation of the test
-    :return: Function which contains the "explanation" attribute
+    :returns: Function which contains the "explanation" attribute
     """
     def decorate(f):
         f.explanation = exp
@@ -291,11 +262,14 @@ def explanation(exp):
 
 
 def takes_config(func):
-    """Decorator to indicate that function takes a config dictionary
+    """
+    Decorator to indicate that function takes a config dictionary
 
     Example:
         @takes_config
         def test_xyz(self):
+
+    :returns: Function which contains the has "takes_config" attribute
     """
     # Just having the attribute indicates that it takes config, no value needed
     func.takes_config = None
