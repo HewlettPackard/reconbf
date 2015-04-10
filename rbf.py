@@ -40,7 +40,8 @@ def main():
 
     # If a report was selected, generate it
     if args.report_type is not 'none':
-        _output_report(results, args.report_type, args.report_file)
+        _output_report(results, args.report_type, args.report_file,
+                       display_mode=display_mode)
 
 
 def _check_root():
@@ -98,11 +99,21 @@ def _log_level_from_arg(specified_level):
     return log_level
 
 
-def _output_report(results, report_type, report_file):
+def _output_report(results, report_type, report_file, display_mode=None):
     if report_type == 'csv':
         results.write_csv(report_file)
     elif report_type == 'json':
         results.write_json(report_file)
+    elif report_type == 'html':
+        config = test_config.config
+        try:
+            html_template = config.get_config('html_template')
+        except KeyError:
+            test_utils.get_logger().error("[-] Unable to find " +
+                                          "'html_template' setting in config")
+            sys.exit(2)
+        else:
+            results.write_html(report_file, html_template, display_mode)
 
 
 def _parse_args():
@@ -131,9 +142,9 @@ def _parse_args():
                         help='output file: default=result.out')
 
     parser.add_argument('-rt', '--reporttype', dest='report_type',
-                        action='store', choices=['csv', 'json'],
+                        action='store', choices=['csv', 'json', 'html'],
                         default='none', type=str,
-                        help='output type: can be "csv" or "json"')
+                        help='output type: can be "csv", "json", or "html"')
 
     parser.add_argument('-dm', '--displaymode', dest='display_mode',
                         action='store',

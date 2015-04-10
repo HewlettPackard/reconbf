@@ -117,7 +117,6 @@ def _check_runpath(path):
         $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
     """
 
-
     dyn = _elf_dynamic(path)
     return 'rpath' in dyn or 'runpath' in dyn
 

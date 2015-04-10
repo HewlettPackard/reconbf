@@ -3,6 +3,7 @@ import test_constants
 import test_config
 from test_config import ConfigNotFound
 from collections import defaultdict
+import sys
 import test_utils
 
 """
@@ -231,6 +232,95 @@ class TestResults:
             logger.info("[+] Writing CSV file: { " + filename + " } "
                         + "successful!")
 
+    def write_html(self, filename, html_template,
+                   display_type=ResultDisplayType.DISPLAY_NOT_PASS):
+        """
+        Creates an HTML report using a template, and outputs to the specified
+        file.
+
+        :param filename: File name to write to
+        :param html_template: HTML template to use to create the report
+        :return: -
+        """
+
+        RESULTS_MARKER = '$$$RESULTS$$$'
+
+        html_rows = ""
+
+        logger = test_utils.get_logger()
+        logger.info("[*] Preparing to write HTML file: { " + filename + " }")
+
+        for res in self._results:
+            if isinstance(res['result'], TestResult):
+                # Handle single result case
+
+                # decide whether to display, based on mode
+                if (_check_display_result(res['result'].result,
+                                          display_type)
+                        or display_type ==
+                        ResultDisplayType.DISPLAY_OVERALL_ONLY):
+                    html_rows += _create_html_result_row(res['name'],
+                                                         res['result'].result,
+                                                         res['result'].notes,
+                                                         False)
+
+            elif isinstance(res['result'], GroupTestResult):
+                # Handle group result case
+                child_rows = []
+                result_list = res['result'].results
+                found_results = defaultdict(lambda: False)
+
+                for child_res in result_list:
+
+                    # indicate that we have seen this result type
+                    found_results[_result_text(
+                        child_res['result'].result)] = True
+
+                    # check if we should display, based on the display type
+                    if _check_display_result(child_res['result'].result,
+                                             display_type):
+
+                        child_rows.append(_create_html_result_row(
+                            child_res['name'], child_res['result'].result,
+                            child_res['result'].notes, do_indent=True))
+
+                if found_results['FAIL']:
+                    parent_result = Result.FAIL
+                else:
+                    parent_result = Result.PASS
+
+                # build the parent string
+                parent_row = _create_html_result_row(res['name'],
+                                                     parent_result,
+                                                     "",
+                                                     do_indent=False)
+
+                html_rows += parent_row
+                for row in child_rows:
+                    html_rows += row
+
+        try:
+            temp_file = open(html_template, 'r')
+            template_content = temp_file.read()
+            temp_file.close()
+        except EnvironmentError:
+            logger.error("[-] Unable to open template file: { " +
+                         html_template + " }")
+            return
+
+        template_content = template_content.replace(RESULTS_MARKER, html_rows)
+
+        try:
+            output_file = open(filename, 'w')
+        except EnvironmentError:
+            logger.error("[-] Unable to open output file: {" +
+                         filename + " } for writing")
+        else:
+            output_file.write(template_content)
+            output_file.close()
+            logger.info("[+] Successfully wrote HTML file: { " + filename +
+                        " }")
+
     def write_json(self, filename):
         """
         Create a JSON file in the specified location
@@ -398,6 +488,44 @@ def _check_display_result(result, display_mode):
 
     else:
         return False
+
+
+def _create_html_result_row(name, result, notes, do_indent):
+    """
+    Create the HTML string for a row in the results table
+
+    :param name: The test name
+    :param result: The test result
+    :param notes: Test notes
+    :param do_indent: Boolean indicating whether to indent
+    :return: HTML string for the row
+    """
+
+    PASS_CLASS = "test_pass"
+    FAIL_CLASS = "test_fail"
+    SKIP_CLASS = "test_skip"
+    INDENT_CLASS = "result_indent"
+
+    # if we're indenting, set the class style to the indent style
+    indent_class = " class=" + INDENT_CLASS if do_indent else ""
+
+    result_class = ""
+    if result == Result.PASS:
+        result_class = " class=" + PASS_CLASS
+    elif result == Result.SKIP:
+        result_class = " class=" + SKIP_CLASS
+    elif result == Result.FAIL:
+        result_class = " class=" + FAIL_CLASS
+
+    row_string = ""
+    row_string += "  <tr>\n"
+    row_string += "    <td{}>{}</td>\n".format(indent_class, name)
+    row_string += "    <td{}>{}</td>\n".format(result_class,
+                                               _result_text(result))
+    row_string += "    <td>{}</td>\n".format(notes)
+    row_string += "  </tr>\n"
+
+    return row_string
 
 
 def _get_term_colors():
