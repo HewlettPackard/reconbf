@@ -150,7 +150,7 @@ def get_sysctl_value(path):
     config = test_config.config
     try:
         sysctl_path = config.get_config("paths.sysctl_path")
-    except ConfigNotFound:
+    except test_config.ConfigNotFound:
         sysctl_path = test_constants.sysctl_path
 
     value = None
