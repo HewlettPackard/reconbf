@@ -1,17 +1,18 @@
 import lib.test_class as test_class
-import lib.test_utils as test_utils
-from lib.test_result import TestResult
 from lib.test_result import Result
+from lib.test_result import TestResult
+import lib.test_utils as test_utils
 
 try:
     import grp
     import pwd
+
     import spwd
 except ImportError as e:
     test_utils.get_logger().error("[-] Error importing module: " + e.message)
 
-import subprocess
 from collections import defaultdict
+import subprocess
 
 
 @test_class.explanation(
@@ -84,8 +85,6 @@ def test_list_sudoers():
     not_sudo_string = 'not allowed to run sudo'
     sudo_string = 'may run the following commands'
     nopasswd_string = 'NOPASSWD'
-
-    logger = test_utils.get_logger()
 
     passwd_entries = pwd.getpwall()
 

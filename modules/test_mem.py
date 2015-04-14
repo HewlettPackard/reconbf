@@ -1,9 +1,10 @@
-import lib.test_utils as test_utils
 import lib.test_class as test_class
-from lib.test_result import TestResult
 from lib.test_result import Result
-from subprocess import Popen, PIPE, check_output
+from lib.test_result import TestResult
+import lib.test_utils as test_utils
+
 import gzip
+from subprocess import check_output
 
 
 @test_class.explanation(

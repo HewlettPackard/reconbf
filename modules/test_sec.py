@@ -1,11 +1,12 @@
-from subprocess import Popen
-from subprocess import PIPE
 import lib.test_class as test_class
-import lib.test_utils as test_utils
 from lib.test_result import GroupTestResult
-from lib.test_result import TestResult
 from lib.test_result import Result
+from lib.test_result import TestResult
+import lib.test_utils as test_utils
 from lib.test_utils import ValNotFound
+
+from subprocess import PIPE
+from subprocess import Popen
 
 
 @test_class.takes_config

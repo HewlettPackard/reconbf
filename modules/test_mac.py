@@ -1,8 +1,10 @@
-import lib.test_utils as test_utils
 import lib.test_class as test_class
-from lib.test_result import TestResult
 from lib.test_result import Result
-from subprocess import Popen, PIPE
+from lib.test_result import TestResult
+import lib.test_utils as test_utils
+
+from subprocess import PIPE
+from subprocess import Popen
 
 
 @test_class.explanation(
@@ -16,8 +18,7 @@ from subprocess import Popen, PIPE
     to run them.
     """)
 def test_selinux():
-    """
-    Uses return from sestatus command to ensure SELinux is installed
+    """Uses return from sestatus command to ensure SELinux is installed
 
     :returns: A TestResult object containing the result and, on failure,
     notes explaining why it did not pass.
@@ -88,8 +89,7 @@ def test_selinux():
     to run them.
     """)
 def test_apparmor():
-    """
-    Uses return from apparmor_status to check installation and level
+    """Uses return from apparmor_status to check installation and level
     at which AppArmor is monitoring.
 
     :returns: A TestResult object containing the result and notes

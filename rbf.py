@@ -1,13 +1,14 @@
 # ReconBF main module and test runner
-import argparse
-import os
-import logging
-import sys
 from lib.test_class import TestSet
 import lib.test_config as test_config
 import lib.test_constants as test_constants
-import lib.test_utils as test_utils
 from lib.test_result import ResultDisplayType
+import lib.test_utils as test_utils
+
+import argparse
+import logging
+import os
+import sys
 
 
 def main():
@@ -45,10 +46,10 @@ def main():
 
 
 def _check_root():
-    '''
-    Check for root, throw error and exit if not
+    """Check for root, throw error and exit if not
+
     :return: -
-    '''
+    """
     logger = test_utils.get_logger()
     if os.getuid() != 0:
         logger.error("[-] RBF must be run as root!")
@@ -69,10 +70,10 @@ def _get_display_type(display_mode):
 
 
 def _init_logger(level=logging.DEBUG):
-    '''
-    Initialize the global logger
+    """Initialize the global logger
+
     :return: -
-    '''
+    """
 
     formatter = logging.Formatter(fmt=test_constants.log_format_string)
 
@@ -85,11 +86,11 @@ def _init_logger(level=logging.DEBUG):
 
 
 def _log_level_from_arg(specified_level):
-    '''
-    Change user supplied log level string to logging level
+    """Change user supplied log level string to logging level
+
     :param specified_level: User supplied string
     :return: equivalent logging level
-    '''
+    """
     # default is INFO
     log_level = logging.INFO
     if specified_level == 'error':
@@ -117,10 +118,10 @@ def _output_report(results, report_type, report_file, display_mode=None):
 
 
 def _parse_args():
-    '''
-    Parse command line args
+    """Parse command line args
+
     :return: Selected args
-    '''
+    """
     parser = argparse.ArgumentParser(
         description='ReconBF - a Python OS security feature tester')
 

@@ -1,6 +1,7 @@
+import test_utils
+
 import json
 import sys
-import test_utils
 
 """
 This class is used to manage the main config for RBF.  It should be loaded
@@ -41,8 +42,7 @@ class Config:
             self._config = json_data
 
     def get_config(self, config_path):
-        """
-        Function will return a specified section of json or value
+        """Function will return a specified section of json or value
 
         :param config_path: Path in JSON document to desired bit
         :returns: Value or section of data

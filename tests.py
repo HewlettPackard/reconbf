@@ -1,6 +1,7 @@
-import argparse
-import lib.test_constants as test_constants
 from lib.test_class import TestSet
+import lib.test_constants as test_constants
+
+import argparse
 import sys
 
 
@@ -16,13 +17,12 @@ def main():
         _display_test_explain(test_set, args.explain_test)
 
     if not args.list and not args.explain_test:
-        print "No arguments specified... run 'tests.py -h' for help"
+        print("No arguments specified... run 'tests.py -h' for help")
         sys.exit(2)
 
 
 def _parse_args():
-    """
-    Parse command line args
+    """Parse command line args
 
     :returns: Selected args
     """
@@ -79,7 +79,7 @@ def _display_test_explain(test_set, test_id):
     if not has_displayed:
         print_str = "No match found for specified test: {" + test_id + "}. "
         print_str += "Please check spelling and try again."
-        print print_str
+        print(print_str)
 
 
 def _build_test_dict(test_item):
@@ -137,7 +137,7 @@ def _print_test(test_dict, explanation_type=PrintExplanationType.ONE_LINE,
     else:
         pass
 
-    print print_string
+    print(print_string)
 
 if __name__ == "__main__":
     main()

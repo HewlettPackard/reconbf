@@ -1,3 +1,2 @@
 test_sec.test_sysctl_values
 test_mac.test_apparmor
-test_sec.test_app_armor_installed

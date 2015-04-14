@@ -1,14 +1,14 @@
+from lib import test_class
+from lib.test_result import GroupTestResult
+from lib.test_result import Result
+from lib.test_result import TestResult
+from lib import test_utils as utils
+
 import json
 import os
 import platform
 import stat
 import subprocess
-import sys
-from pprint import pprint
-from collections import defaultdict
-from lib import test_utils as utils
-from lib import test_class
-from lib.test_result import TestResult, Result, GroupTestResult
 
 
 def _is_elf(path):
@@ -38,8 +38,7 @@ def _elf_file_headers(path):
 
 
 def _check_relro(path):
-    """
-    RELRO - This prevents exploits that write to the GOT
+    """RELRO - This prevents exploits that write to the GOT
     in ELF executables. To achieve full RELRO you would need
     to build using the flags: $ gcc foo.c -Wl,-z,relro,-z,now.
     """
@@ -55,8 +54,7 @@ def _check_relro(path):
 
 
 def _check_stack_canary(path):
-    """
-    Stack Canary - This mitigation mechanism attempts
+    """Stack Canary - This mitigation mechanism attempts
     to detect buffer overflows by placing a canary value on
     the stack before other locals. If it cannot be verified it
     is an indication that a buffer overflow has occurred.
@@ -73,8 +71,7 @@ def _check_stack_canary(path):
 
 
 def _check_nx(path):
-    """
-    NX - This mitigation technique attempts to mark
+    """NX - This mitigation technique attempts to mark
     as the binary as non-executable memory. E.g. An attacker
     can't as easily fill a buffer with shellcode and jump
     to the start address. It is common for this to be disabled
@@ -89,8 +86,7 @@ def _check_nx(path):
 
 
 def _check_pie(path):
-    """
-    PIE - Position independent executables ensure that
+    """PIE - Position independent executables ensure that
     the entire address space is randomized, including the base
     executable position in memory. This makes return to libc
     type attacks more difficult to achive. To compile an
@@ -108,8 +104,7 @@ def _check_pie(path):
 
 
 def _check_runpath(path):
-    """
-    Fortify Source - This introduces support for
+    """Fortify Source - This introduces support for
     detecting buffer overflows in various functions that perform
     operations on memory and strings. The indicator for this is
     symbols such as __sprintf_chk rather then __sprintf. To compile
@@ -122,8 +117,7 @@ def _check_runpath(path):
 
 
 def _check_fortify(path):
-    """
-    Run Path - Baking in a fixed run path to shared libraries
+    """Run Path - Baking in a fixed run path to shared libraries
     can leave executables open to various attacks. This detects
     binaries that have either rpath or runpath enabled.
     """
@@ -147,8 +141,7 @@ def _check_fortify(path):
 
 
 def _extract_symbols(cmd):
-    """
-    Helper function to reduce code duplication. Only difference
+    """Helper function to reduce code duplication. Only difference
     in output of commands comes from the way the 'nm' command
     is run.
 
@@ -181,8 +174,7 @@ def _extract_symbols(cmd):
 
 
 def _symbols_in_elf(path):
-    """
-    Generator to return the symbols within an ELF executable or
+    """Generator to return the symbols within an ELF executable or
     shared library. Output taken from the 'nm' command.
 
     *NOTE* This will note return any results for stripped binaries.
@@ -197,8 +189,7 @@ def _symbols_in_elf(path):
 
 
 def _symbols_in_dynsym(path):
-    """
-    Generator to return all the symbols within an ELF executable dynsym
+    """Generator to return all the symbols within an ELF executable dynsym
     section. These results will only include the symbols needed for
     dynamic linking at runtime. This section will exists even when the
     binary is stripped.  Essentially this is output taken from `nm -D`
@@ -212,7 +203,6 @@ def _symbols_in_dynsym(path):
 
 
 def _check_policy(context, policy, actual, results):
-    log = utils.get_logger()
     fmt = "Expected: {} Actual: {}"
     for k in policy.keys():
         check = "[{:^12s}] {}".format(k, context)

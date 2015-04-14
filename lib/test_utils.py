@@ -1,11 +1,12 @@
+import test_config
+from test_config import ConfigNotFound
+import test_constants
+
 import glob
 import json
 import logging
 import os
 import subprocess
-import test_constants
-import test_config
-from test_config import ConfigNotFound
 
 """
 This module is where utility functions which are generally useful to tests
@@ -18,8 +19,7 @@ class ValNotFound(Exception):
 
 
 def check_path_exists(path):
-    """
-    Checks for the existence of a path
+    """Checks for the existence of a path
 
     :param path: The path to check
     :returns: True or False
@@ -37,8 +37,8 @@ def check_path_exists(path):
 
 
 def get_stats_on_file(file_name):
-    """
-    Return the os.stat value for the specified filename, or None if it fails.
+    """Return the os.stat value for the specified filename, or None if it
+    fails.
 
     :param file_name: The filename to get stat for
     :returns: an os.stat return value
@@ -58,8 +58,7 @@ def get_stats_on_file(file_name):
 
 
 def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
-    """
-    Utility function used to find all descendants of a base path
+    """Utility function used to find all descendants of a base path
 
     :param base_path: The main path to start looking from
     :param subdirs: True/False- Recurse through subdirectories?
@@ -80,8 +79,6 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
         return_list = []
         for root, dirnames, filenames in os.walk(base_path):
             for filename in filenames:
-                do_add = True
-
                 if root != base_path and not subdirs:
                     pass
                 else:
@@ -95,8 +92,7 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
 
 
 def get_logger():
-    """
-    Used to get the constant logger
+    """Used to get the constant logger
 
     :returns: The logger instance
     """
@@ -104,8 +100,7 @@ def get_logger():
 
 
 def get_reqs_from_file(requirements_file, requirements_id="requirements"):
-    """
-    Used to load a JSON file which contains configuration, and return the
+    """Used to load a JSON file which contains configuration, and return the
     specified object from it
 
     :param requirements_file: The configuration file to load
@@ -142,8 +137,7 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
 
 
 def get_sysctl_value(path):
-    """
-    Used to retrieve the value of a sysctl setting.  Uses a configurable
+    """Used to retrieve the value of a sysctl setting.  Uses a configurable
     base sysctl path. Raises a ValNotFound exception if the setting can't
     be retrieved for some reason.
 
@@ -179,8 +173,7 @@ def get_sysctl_value(path):
 
 
 def running_processes():
-    """
-    Use the /proc filesystem to determine a list of running processes.
+    """Use the /proc filesystem to determine a list of running processes.
 
     :returns: A list containing tuples of the pid of a running process
               and the executable file that launched it (if it exists).
@@ -192,7 +185,7 @@ def running_processes():
         exe = None
         try:
             exe = os.path.realpath('/proc/{}/exe'.format(pid))
-        except OSError as err:
+        except OSError:
             logger.debug("[*] Unable to locate exe for {" + str(pid) + "}")
         procs.append((pid, exe))
 
@@ -200,8 +193,8 @@ def running_processes():
 
 
 def is_service_running(service_name):
-    """
-    Use 'service <servicename> status' command to get the status of a service
+    """Use 'service <servicename> status' command to get the status of a
+    service
 
     :returns: Boolean indicating if the service is running
     """
@@ -218,7 +211,7 @@ def is_service_running(service_name):
     except OSError:
         get_logger().error("[-] Unable to call service command")
 
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         # this indicates service is not running
         pass
 
@@ -230,8 +223,7 @@ def is_service_running(service_name):
 
 
 def executables_in_path():
-    """
-    Search the current $PATH to create a list of all executable files.
+    """Search the current $PATH to create a list of all executable files
 
     :returns: A list of all executables on the $PATH
     """
@@ -239,7 +231,7 @@ def executables_in_path():
     executables = []
     try:
         syspath = os.environ['PATH']
-    except KeyError as err:
+    except KeyError:
         logger.debug("[*] $PATH variable not set.")
         return []
 
@@ -252,8 +244,7 @@ def executables_in_path():
 
 
 def have_command(cmd):
-    """
-    Returns true if the specified command is availabe on the system
+    """Returns true if the specified command is available on the system
     path.
 
     :param cmd: The command to check for using 'which'
@@ -265,7 +256,7 @@ def have_command(cmd):
         rc = subprocess.check_call(['which', cmd], stdout=null, stderr=null)
         return rc == 0
 
-    except subprocess.CalledProcessError as err:
+    except subprocess.CalledProcessError:
         logger.debug("[*] {} not on $PATH".format(cmd))
 
     return False

@@ -1,13 +1,14 @@
+import test_config
+from test_config import ConfigNotFound
+from test_result import TestResults
+import test_utils
+
 import glob
 import importlib
 from inspect import getmembers
 from inspect import isfunction
 import os
 import sys
-import test_utils
-import test_config
-from test_config import ConfigNotFound
-from test_result import TestResults
 
 """
 This module implements the TestSet class which is responsible for discovering,
@@ -50,9 +51,8 @@ class TestSet():
 
     def add_from_directory(self, directory, file_pat='test*.py',
                            fn_name_pat='test_'):
-        """
-        Adds all tests from a specified directory that match optional pattern
-        to the current test set.
+        """Adds all tests from a specified directory that match optional
+        pattern to the current test set.
 
         :param directory: The directory to search for tests in
         :param file_pat: (Optional) File name glob
@@ -118,8 +118,7 @@ class TestSet():
         self._tests = _sort_tests(test_list, SortType.MODULE_ALPHABETIC)
 
     def run(self):
-        """
-        Run all tests in this TestSet and return results
+        """Run all tests in this TestSet and return results
 
         :returns: Tuple containing qualified test name and result
         """
@@ -173,8 +172,7 @@ class TestSet():
         return TestResults(results)
 
     def set_script(self, script_file):
-        """
-        This method takes a script file, and sets the test set to run specified
+        """This method takes a script file, and sets the test set to run specified
         tests in the order listed in the script.
 
         :param script_file: File to use for script
@@ -210,8 +208,7 @@ class TestSet():
         self._tests = new_test_set
 
     def _find_test_by_can_name(self, module_str):
-        """
-        Find a test by it's canonical name: module name + '.' + test name
+        """Find a test by it's canonical name: module name + '.' + test name
 
         :returns: The test dictionary for specified test
         """
@@ -248,8 +245,7 @@ def _sort_tests(sort_list, sort_type):
 
 
 def explanation(exp):
-    """
-    Decorator to add an explanation for why a test is important from a
+    """Decorator to add an explanation for why a test is important from a
     security perspective
 
     :param exp: String explanation of the test
@@ -262,8 +258,7 @@ def explanation(exp):
 
 
 def takes_config(func):
-    """
-    Decorator to indicate that function takes a config dictionary
+    """Decorator to indicate that function takes a config dictionary
 
     Example:
         @takes_config

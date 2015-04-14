@@ -1,9 +1,10 @@
-from grp import getgrgid
 import lib.test_class as test_class
-import lib.test_utils as test_utils
+from lib.test_result import GroupTestResult
 from lib.test_result import Result
 from lib.test_result import TestResult
-from lib.test_result import GroupTestResult
+import lib.test_utils as test_utils
+
+from grp import getgrgid
 from pwd import getpwuid
 
 
@@ -195,8 +196,7 @@ def _does_owner_group_meet_req(stats, owners=None, groups=None):
 
 
 def _does_perms_meet_req(stats, disallowed_perms):
-    """
-    Checks a files permissions against a permission requirement
+    """Checks a files permissions against a permission requirement
 
     :param stats: Stat object of a file returned by stat
     :param disallowed_perms: A string representing unix style permissions that
@@ -211,8 +211,6 @@ def _does_perms_meet_req(stats, disallowed_perms):
     :returns: A TestResult object containing the result and notes explaining
     why it didn't pass.
     """
-
-    logger = test_utils.get_logger()
 
     # There's undoubtedly some simple clever binary algebra way to do this
     vals_with = dict()
@@ -235,7 +233,7 @@ def _does_perms_meet_req(stats, disallowed_perms):
         did_pass = True
         reason = ""
         # Get numeric value for file permissions - eg 644
-        file_perms_num = oct(stats.st_mode & 0777)[-3:]
+        file_perms_num = oct(stats.st_mode & 0o777)[-3:]
 
         cur_pos = 0
         for section in sections:

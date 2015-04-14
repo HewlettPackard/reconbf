@@ -1,10 +1,10 @@
-import json
-import test_constants
 import test_config
 from test_config import ConfigNotFound
-from collections import defaultdict
-import sys
+import test_constants
 import test_utils
+
+from collections import defaultdict
+import json
 
 """
 Several classes are defined in this module:
@@ -86,8 +86,7 @@ class TestResults:
         self._results = results_list
 
     def add_results(self, new_results):
-        """
-        Used for adding a list of one or more TestResult or GroupTestResult
+        """Used for adding a list of one or more TestResult or GroupTestResult
         instances to the set.
 
         :param new_results: A list of items to append to the list
@@ -98,8 +97,7 @@ class TestResults:
 
     def display_on_terminal(self, use_color=True,
                             display_type=ResultDisplayType.DISPLAY_NOT_PASS):
-        """
-        Pretty display of results on terminal
+        """Pretty display of results on terminal
 
         :param use_color: (Optional) Boolean indicating whether to use color
         :param display_type: (Optional) ResultDisplayType indicating which
@@ -109,13 +107,13 @@ class TestResults:
 
         term_colors = _get_term_colors()
 
-        # TODO: add some way of specifying a wider terminal
+        # TODO(tmcpeak): add some way of specifying a wider terminal
         # Print header section
-        print '\n'
-        print '=' * 80
+        print('\n')
+        print('=' * 80)
         print('{0: <60}'.format('Test Name') + '{0: <10}'.format('Result') +
               'Notes')
-        print '=' * 80
+        print('=' * 80)
 
         for res in self._results:
             if isinstance(res['result'], TestResult):
@@ -123,8 +121,8 @@ class TestResults:
 
                 # decide whether to display, based on mode
                 if (_check_display_result(res['result'].result,
-                                          display_type)
-                        or display_type ==
+                                          display_type) or
+                        display_type ==
                         ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
                     result_string = _build_result_string(res['name'],
@@ -133,7 +131,7 @@ class TestResults:
                                                          use_color,
                                                          term_colors,
                                                          False)
-                    print result_string
+                    print(result_string)
 
             elif isinstance(res['result'], GroupTestResult):
 
@@ -173,16 +171,15 @@ class TestResults:
                     use_color,
                     term_colors,
                     False)
-                print parent_string
+                print(parent_string)
 
                 for child_string in child_results:
-                    print child_string
+                    print(child_string)
 
-        print '\n'
+        print('\n')
 
     def write_csv(self, filename, separator_char=test_constants.csv_separator):
-        """
-        Create a CSV file in the specified location with an optionally
+        """Create a CSV file in the specified location with an optionally
         specified separator, default: '|'
 
         The fields are test name, result, and notes
@@ -197,8 +194,8 @@ class TestResults:
         logger = test_utils.get_logger()
         logger.info("[*] Preparing to write CSV file { " + filename + " }")
 
-        # TODO: Fix write CSV to use a real CSV library
-        # TODO: Fix write CSV to reflect new results list structure
+        # TODO(tmcpeak): Fix write CSV to use a real CSV library
+        # TODO(tmcpeak): Fix write CSV to reflect new results list structure
 
         # Create the header row
         header_row_items = ['Test', 'Result', 'Notes']
@@ -226,17 +223,16 @@ class TestResults:
                     csv_output.write(line + "\n")
 
         except EnvironmentError:
-            logger.info("[-] Unable to open CSV file { " + filename + " } "
-                        + "for writing!")
+            logger.info("[-] Unable to open CSV file { " + filename + " } " +
+                        "for writing!")
         else:
-            logger.info("[+] Writing CSV file: { " + filename + " } "
-                        + "successful!")
+            logger.info("[+] Writing CSV file: { " + filename + " } " +
+                        "successful!")
 
     def write_html(self, filename, html_template,
                    display_type=ResultDisplayType.DISPLAY_NOT_PASS):
-        """
-        Creates an HTML report using a template, and outputs to the specified
-        file.
+        """Creates an HTML report using a template, and outputs to the
+        specified file.
 
         :param filename: File name to write to
         :param html_template: HTML template to use to create the report
@@ -256,9 +252,10 @@ class TestResults:
 
                 # decide whether to display, based on mode
                 if (_check_display_result(res['result'].result,
-                                          display_type)
-                        or display_type ==
+                                          display_type) or
+                        display_type ==
                         ResultDisplayType.DISPLAY_OVERALL_ONLY):
+
                     html_rows += _create_html_result_row(res['name'],
                                                          res['result'].result,
                                                          res['result'].notes,
@@ -322,8 +319,7 @@ class TestResults:
                         " }")
 
     def write_json(self, filename):
-        """
-        Create a JSON file in the specified location
+        """Create a JSON file in the specified location
 
         The fields are test name, result, and notes if they exist
 
@@ -362,11 +358,11 @@ class TestResults:
                 # sort keys so that we have deterministic results
                 json.dump(tests, json_output_file, indent=4)
         except EnvironmentError:
-            logger.info("[-] Unable to open JSON file { " + filename + " } "
-                        + "for writing!")
+            logger.info("[-] Unable to open JSON file { " + filename + " } " +
+                        "for writing!")
         else:
-            logger.info("[+] Writing JSON file: { " + filename + " } "
-                        + "successful!")
+            logger.info("[+] Writing JSON file: { " + filename + " } " +
+                        "successful!")
 
 
 class TestResult():
@@ -389,8 +385,7 @@ class GroupTestResult():
         self._results_list = list()
 
     def add_result(self, name, result):
-        """
-        Add a new result to the group test results list
+        """Add a new result to the group test results list
 
         :param name: Descriptive name of this test
         :param result: A TestResult indicating the result of the test
@@ -403,8 +398,7 @@ class GroupTestResult():
 
     @property
     def results(self):
-        """
-        Property to get the class results_list
+        """Property to get the class results_list
 
         :returns: The results list
         """
@@ -412,8 +406,7 @@ class GroupTestResult():
 
 
 def _build_result_string(name, result, notes, use_color, term_colors, indent):
-        """
-        Internal utility function to build a result string
+        """Internal utility function to build a result string
 
         :param name: Name of test
         :param result: Enum indicating the status of the test
@@ -463,9 +456,8 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent):
 
 
 def _check_display_result(result, display_mode):
-    """
-    Based on the display mode and the result, determine if a result should be
-    shown.
+    """Based on the display mode and the result, determine if a result should
+    be shown.
 
     :param result: The test result
     :param display_mode: The display mode
@@ -491,8 +483,7 @@ def _check_display_result(result, display_mode):
 
 
 def _create_html_result_row(name, result, notes, do_indent):
-    """
-    Create the HTML string for a row in the results table
+    """Create the HTML string for a row in the results table
 
     :param name: The test name
     :param result: The test result
