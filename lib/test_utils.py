@@ -1,5 +1,4 @@
 import test_config
-from test_config import ConfigNotFound
 import test_constants
 
 import glob
