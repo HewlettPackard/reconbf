@@ -1,6 +1,8 @@
 import test_config
 import test_constants
 
+import ConfigParser
+import StringIO
 import glob
 import json
 import logging
@@ -240,6 +242,102 @@ def executables_in_path():
 
     is_exec = lambda x: os.path.isfile(x) and os.access(x, os.X_OK)
     return [x for x in executables if is_exec(x)]
+
+
+def config_search(filename, config_descriptor):
+    """Find the option value specified by config_descriptor in file specified
+    by filename.  If the file doesn't exist, will log an error and then
+    re-raise the IOError exception.  If the option exists, return it, otherwise
+    return None.
+    :param filename: The config file to look for the value in
+    :param config_descriptor: String in the format 'section_header.value_name'
+    :returns: Value of config setting if it exists, otherwise None
+    """
+    # if the config file passed doesn't exist, return an exception
+    if not check_path_exists(filename) or not os.access(filename, os.R_OK):
+        get_logger().error("[-] Can't open config file: { " + filename + " }")
+        # raise the IOError exception so that calling functions can detect that
+        # the file didn't exist
+        raise IOError
+
+    # try to parse the config file normally
+    try:
+        parser = ConfigParser.SafeConfigParser(allow_no_value=True)
+        parser.read(filename)
+
+    # if the config file didn't have sections, ConfigParser gets upset, so we
+    # need a workaround...
+    except ConfigParser.MissingSectionHeaderError:
+        # we're going to create a new version of the file in memory, with a
+        # section called [dummy] at the top
+        modified_file = StringIO.StringIO()
+        modified_file.write('[dummy]\n')
+
+        with open(filename, 'r') as cfg_file:
+            modified_file.write(cfg_file.read())
+            cfg_file.close()
+
+            # rewind to the beginning of the file
+            modified_file.seek(0)
+
+            # then attempt to parse the modified file
+            try:
+                parser.readfp(modified_file)
+            except ConfigParser.ParsingError:
+                get_logger().error("[-] Improperly formatted config file: { " +
+                                   filename + " }")
+                return None
+
+    except ConfigParser.ParsingError:
+        get_logger().error("[-] Improperly formatted config file: { " +
+                           filename + " }")
+        return None
+
+    num_descriptors = len(config_descriptor.split('.'))
+
+    # if one descriptor was passed, we'll assume the option isn't in a config
+    # section, and therefore it should have been placed in the [dummy] section
+    if num_descriptors == 1:
+        section_name = "dummy"
+        option_name = config_descriptor
+
+    # otherwise, the bit before the '.' is the section name, and the bit after
+    # is the option name
+    elif num_descriptors == 2:
+        section_name = config_descriptor.split('.')[0]
+        option_name = config_descriptor.split('.')[1]
+
+    # if there aren't the right number of sections, error out and return None
+    else:
+        get_logger().error("[-] Improperly formatted config option: { " +
+                           config_descriptor + " }")
+        return None
+
+    # this will work if the key/value is delimited with an '=' as ConfigParser
+    # assumes
+    if parser.has_option(section_name, option_name):
+        return parser.get(section_name, option_name)
+
+    # otherwise we need to parse the options manually
+    try:
+        options = parser.options(section_name)
+
+    # if we don't find it, return None
+    except ConfigParser.NoSectionError:
+        return None
+
+    # for each option listed in the section, separate the option name (part
+    # before the first space) from the option value (part after the first
+    # space)
+    else:
+        for option in options:
+            try:
+                if option.split(' ', 1)[0] == option_name:
+                    return option.split(' ', 1)[1]
+            except IndexError:
+                return ""
+
+    return None
 
 
 def have_command(cmd):
