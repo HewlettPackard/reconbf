@@ -163,15 +163,21 @@ class TestResults:
                 else:
                     parent_result = Result.PASS
 
-                # build the parent string
-                parent_string = _build_result_string(
-                    res['name'],
-                    parent_result,
-                    "",
-                    use_color,
-                    term_colors,
-                    False)
-                print(parent_string)
+                # check if we should display the parent result based on the
+                # settings
+                if (_check_display_result(parent_result, display_type) or
+                        display_type ==
+                        ResultDisplayType.DISPLAY_OVERALL_ONLY):
+
+                    # build the parent string
+                    parent_string = _build_result_string(
+                        res['name'],
+                        parent_result,
+                        "",
+                        use_color,
+                        term_colors,
+                        False)
+                    print(parent_string)
 
                 for child_string in child_results:
                     print(child_string)
@@ -286,13 +292,18 @@ class TestResults:
                 else:
                     parent_result = Result.PASS
 
-                # build the parent string
-                parent_row = _create_html_result_row(res['name'],
-                                                     parent_result,
-                                                     "",
-                                                     do_indent=False)
+                if (_check_display_result(parent_result, display_type) or
+                        display_type ==
+                        ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
-                html_rows += parent_row
+                    # build the parent string
+                    parent_row = _create_html_result_row(res['name'],
+                                                         parent_result,
+                                                         "",
+                                                         do_indent=False)
+
+                    html_rows += parent_row
+
                 for row in child_rows:
                     html_rows += row
 

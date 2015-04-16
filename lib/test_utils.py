@@ -1,8 +1,7 @@
 import test_config
 import test_constants
 
-import ConfigParser
-import StringIO
+from collections import defaultdict
 import glob
 import json
 import logging
@@ -244,100 +243,89 @@ def executables_in_path():
     return [x for x in executables if is_exec(x)]
 
 
-def config_search(filename, config_descriptor):
+def config_search(filename, config_descriptor, comment_delims=['#'],
+                  keyval_delim=' '):
     """Find the option value specified by config_descriptor in file specified
     by filename.  If the file doesn't exist, will log an error and then
     re-raise the IOError exception.  If the option exists, return it, otherwise
     return None.
     :param filename: The config file to look for the value in
     :param config_descriptor: String in the format 'section_header.value_name'
+    :param comment_delims: (optional) list of characters which indicate a
+    comment when seen at the beginning of the line
+
+    :param keyval_delim: (optional) character which deliminates a key value
+    separation
+
     :returns: Value of config setting if it exists, otherwise None
     """
-    # if the config file passed doesn't exist, return an exception
-    if not check_path_exists(filename) or not os.access(filename, os.R_OK):
-        get_logger().error("[-] Can't open config file: { " + filename + " }")
-        # raise the IOError exception so that calling functions can detect that
-        # the file didn't exist
+
+    try:
+        with open(filename, 'r') as fp:
+            config_lines = fp.readlines()
+
+    except IOError:
+        get_logger().error("[-] Unable to read config file: { " +
+                           filename + " }")
         raise IOError
 
-    # try to parse the config file normally
-    try:
-        parser = ConfigParser.SafeConfigParser(allow_no_value=True)
-        parser.read(filename)
+    config_sections = defaultdict(dict)
+    current_header = ''
 
-    # if the config file didn't have sections, ConfigParser gets upset, so we
-    # need a workaround...
-    except ConfigParser.MissingSectionHeaderError:
-        # we're going to create a new version of the file in memory, with a
-        # section called [dummy] at the top
-        modified_file = StringIO.StringIO()
-        modified_file.write('[dummy]\n')
+    for line in config_lines:
+        # strip spaces from the left, strip newline from the right
+        stripped_line = line.lstrip(' ').strip()
 
-        with open(filename, 'r') as cfg_file:
-            modified_file.write(cfg_file.read())
-            cfg_file.close()
+        # if this is now an empty line, skip
+        if len(stripped_line) < 1:
+            pass
 
-            # rewind to the beginning of the file
-            modified_file.seek(0)
+        # if this is a comment line, skip
+        elif stripped_line[0] in comment_delims:
+            pass
 
-            # then attempt to parse the modified file
-            try:
-                parser.readfp(modified_file)
-            except ConfigParser.ParsingError:
-                get_logger().error("[-] Improperly formatted config file: { " +
-                                   filename + " }")
-                return None
+        # if this is a header line, set the header
+        elif stripped_line[0] == '[':
+            right_brace = stripped_line.find(']', 0)
+            if right_brace != -1:
+                current_header = stripped_line[1:right_brace]
 
-    except ConfigParser.ParsingError:
-        get_logger().error("[-] Improperly formatted config file: { " +
-                           filename + " }")
-        return None
+        # otherwise this is a key value line
+        else:
+            # everything to the left of the keyval delimiter is the key, to
+            # the right is the value
+            keyval = stripped_line.split(keyval_delim, 1)
+            key = keyval[0]
 
-    num_descriptors = len(config_descriptor.split('.'))
+            # if there is no value, it's an empty string
+            if len(keyval) > 1:
+                value = keyval[1]
+            else:
+                value = ''
 
-    # if one descriptor was passed, we'll assume the option isn't in a config
-    # section, and therefore it should have been placed in the [dummy] section
-    if num_descriptors == 1:
-        section_name = "dummy"
-        option_name = config_descriptor
+            config_sections[current_header][key] = value
 
-    # otherwise, the bit before the '.' is the section name, and the bit after
-    # is the option name
-    elif num_descriptors == 2:
-        section_name = config_descriptor.split('.')[0]
-        option_name = config_descriptor.split('.')[1]
+    # search for the option specified in config descriptors
+    config_descriptors = config_descriptor.split('.')
 
-    # if there aren't the right number of sections, error out and return None
+    # no section specified, look for the value in the '' section
+    if len(config_descriptors) == 1:
+        section = ''
+        option = config_descriptors[0]
+
+    elif len(config_descriptors) == 2:
+        section = config_descriptors[0]
+        option = config_descriptors[1]
+
     else:
-        get_logger().error("[-] Improperly formatted config option: { " +
+        get_logger().error('[-] Malformed config descriptor: { ' +
                            config_descriptor + " }")
         return None
 
-    # this will work if the key/value is delimited with an '=' as ConfigParser
-    # assumes
-    if parser.has_option(section_name, option_name):
-        return parser.get(section_name, option_name)
-
-    # otherwise we need to parse the options manually
     try:
-        options = parser.options(section_name)
-
-    # if we don't find it, return None
-    except ConfigParser.NoSectionError:
+        return config_sections[section][option]
+    except KeyError:
         return None
-
-    # for each option listed in the section, separate the option name (part
-    # before the first space) from the option value (part after the first
-    # space)
-    else:
-        for option in options:
-            try:
-                if option.split(' ', 1)[0] == option_name:
-                    return option.split(' ', 1)[1]
-            except IndexError:
-                return ""
-
-    return None
 
 
 def have_command(cmd):

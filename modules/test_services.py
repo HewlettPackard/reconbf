@@ -52,7 +52,7 @@ def test_running_services(config):
             if not _check_valid_req(req):
                 continue
 
-            meets_req, reason = _does_meet_requirement(req)
+            meets_req, reason = _does_svc_meet_run_requirement(req)
 
             name = req['name'] if 'name' in req else str(req['services'])
             result = Result.PASS
@@ -70,11 +70,16 @@ def test_running_services(config):
 @test_class.takes_config
 @test_class.explanation(
     """
-    Protection name:
+    Protection name: Secure service configurations
 
-    Check:
+    Check: Checks that the configuration file for a service either does or
+    doesn't contain specified values.
 
-    Purpose:
+    Purpose: Many services in Linux environments can be secure or insecure,
+    depending on the way that they have been configured.  A prime example is
+    SSH, which can be configured securely to use strong protocols only, and not
+    permit direct login to root.  Other configurations of SSH are less secure,
+    and the purpose of this test is to detect insecure settings.
     """)
 def test_service_config(config):
     logger = test_utils.get_logger()
@@ -89,7 +94,6 @@ def test_service_config(config):
     #  2) Can't find/open that json file
     #  3) File isn't valid json
     except KeyError:
-
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
 
@@ -100,7 +104,117 @@ def test_service_config(config):
         pass
 
     else:
+        results = GroupTestResult()
         svccfg_reqs = _validate_svc_cfg_list(svccfg_reqs)
+
+        for req in svccfg_reqs:
+            returned_results = _check_svc_config(req)
+
+            # add all the results returned from the check function
+            for name, result in returned_results:
+                results.add_result(name, result)
+
+        return results
+
+    return TestResult(Result.SKIP, "Invalid config file")
+
+
+def _check_svc_config(req):
+    """Return a TestResult based on whether the specified service config
+    requirement is met.  Since a service config requirement may include
+    multiple settings in a single config file, this will check all
+    requirements individually, and return a list of TestResults.
+
+    :param req: Requirement specification (one entry from the config file)
+    :return: A list of name, TestResult tuples to add to the group test result
+    """
+    return_results = []
+
+    # the options to check are the items in the requirement other than the name
+    # and config file
+    checked_options = {}
+    for r in req:
+        if r not in ['name', 'config']:
+            checked_options[r] = req[r]
+
+    for option in checked_options:
+        try:
+            option_value = test_utils.config_search(req['config'], option)
+
+        except IOError:
+            # no point keep trying to check this config file if we can't open
+            # it
+            return_results.append((req['name'],
+                                   TestResult(Result.SKIP,
+                                              "Unable to open config file { " +
+                                              req['config'] + " }")))
+            break
+
+        test_name = "{}: '{}'".format(req['name'], option)
+
+        if option_value is None:
+            # option_value of None means that the config option wasn't set
+
+            # if it was supposed to be set to a value, the test fails
+            if 'allowed' in checked_options[option]:
+
+                # build note string based on the allowed value
+                if checked_options[option]['allowed'] == "*":
+                    allowed_val = "any value"
+                else:
+                    allowed_val = ("one of " +
+                                   str(checked_options[option]['allowed']))
+
+                reason = "Option expected to be " + allowed_val + ", not found"
+                result = Result.FAIL
+
+            # otherwise it passes
+            else:
+                reason = "Disallowed option not found"
+                result = Result.PASS
+
+        else:
+            # the option value was found- if we're checking allowed then the
+            # test passes when the value is in the allowed values, and fails
+            # when it isn't
+            if 'allowed' in checked_options[option]:
+                if(checked_options[option]['allowed'] == '*' or
+                        option_value in checked_options[option]['allowed']):
+                    result = Result.PASS
+                    reason = "Option value in expected value(s): "
+                    reason += str(checked_options[option]['allowed'])
+
+                else:
+                    result = Result.FAIL
+                    reason = "Option value: '{}', not in expected {}".format(
+                        option_value, str(checked_options[option]['allowed']))
+
+            # the option value was found, and we're checking if it is a
+            # disallowed value, fail if it is, and pass if it isn't
+            else:
+                # we're checking if value is a disallowed value
+                if(checked_options[option]['disallowed'] == '*' or
+                        option_value in checked_options[option]['disallowed']):
+
+                    # build note string based on the disallowed value
+                    if checked_options[option]['disallowed'] == '*':
+                        disallowed_val = "any value"
+                    else:
+                        disallowed_val = "one of " + str(
+                            checked_options[option]['disallowed'])
+
+                    result = Result.FAIL
+                    reason = "Option value: '{}' ".format(option_value)
+                    reason += "in disallowed value: {}".format(disallowed_val)
+
+                else:
+                    result = Result.PASS
+                    reason = "Option value: {} not disallowed".format(
+                        option_value)
+
+        return_results.append((test_name, TestResult(result, reason)))
+
+    return return_results
 
 
 def _check_valid_req(req):
@@ -149,7 +263,7 @@ def _check_valid_req(req):
         return True
 
 
-def _does_meet_requirement(req):
+def _does_svc_meet_run_requirement(req):
     """Utility function to check if a service requirement is met
 
     :param req: dictionary representing an entry in the services config file
@@ -201,19 +315,20 @@ def _validate_svc_cfg_list(reqs_list):
 
     "section_name.setting" : { "allowed": ["value"] }
 
-    Each service config can have "allowed" and/or "disallowed" each specifying
+    Each service config can have "allowed" or "disallowed" each specifying
     a value of "*" or a list of values: ["a", "b"].
 
     If allowed and disallowed values conflict with each other, the one that
     appears second will take precedence.
 
     :param reqs_dict: Initial requirements dictionary from JSON config
-    :return: reqs_dict with any bad entries removed
+    :returns: reqs_dict with any bad entries removed
     """
 
     return_list = []
 
     for config in reqs_list:
+
         # if the config check doesn't have 'name', it isn't valid, don't add
         if 'name' not in config or not type(config['name']) == unicode:
             test_utils.get_logger().error("Service config requirement must " +
@@ -240,31 +355,45 @@ def _validate_svc_cfg_list(reqs_list):
             else:
                 # make sure that the config contains a dict
                 if type(config[config_value]) != dict:
-                    log_msg = 'Expected a dictionary of "allowed"/"disallowed"'
-                    log_msg += ' values, got: '
+
+                    log_msg = config['name'] + ': Expected a dictionary of '
+                    log_msg += '"allowed"/"disallowed" values, got: '
                     log_msg += str(type(config[config_value]))
                     test_utils.get_logger().error(log_msg)
                     continue
 
+                # make sure one of 'allowed' or 'disallowed' are present
+                if("allowed" not in config[config_value] and
+                        "disallowed" not in config[config_value]):
+
+                    log_msg = config['name'] + ': Expected "allowed" or '
+                    log_msg += '"disallowed" setting in '
+                    log_msg += str(config[config_value])
+                    test_utils.get_logger().error(log_msg)
+                    continue
+
+                # ensure that each option requirement has allowed or disallowed
+                # and those values are either a list of strings or '*'
                 for check in config[config_value]:
                     check_value = config[config_value][check]
 
                     # if there are keys in the dict that aren't allowed or
                     # disallowed, then it's an improper entry
                     if check not in ["allowed", "disallowed"]:
-                        log_msg = 'Expect only "allowed" or "disallowed": '
-                        log_msg += str(check_value)
+
+                        log_msg = config['name'] + ': Expect only "allowed" '
+                        log_msg += 'or "disallowed": ' + str(check_value)
                         test_utils.get_logger().error(log_msg)
                         valid_config = False
 
                     # if the values for the "allowed" and "disallowed" aren't
                     # a list or the string "*", then it's an improper entry
-                    else:
-                        if not (type(check_value) == list or
-                                check_value == "*"):
+                    elif not (type(check_value) == list or
+                              check_value == "*"):
 
-                            log_msg = 'Value must be a "*" or a list of '
-                            log_msg += "strings, got: " + str(check_value)
+                            log_msg = config['name'] + 'Value must be a "*" or'
+                            log_msg += ' a list of strings, got: '
+                            log_msg += str(check_value)
                             test_utils.get_logger().error(log_msg)
                             valid_config = False
 
