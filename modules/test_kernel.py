@@ -244,3 +244,27 @@ def test_proc_map_access():
         results.add_result(t, TestResult(result))
 
     return results
+
+
+@test_class.explanation("""
+    Protection name: ptrace scope
+
+    Check: Test if ptrace scope control is enabled
+
+    Purpose: Kernels compiled with YAMA enabled prevent attackers
+    from using compromised processes to attach to other running
+    processes and extract sensitive key information from memory.
+
+    For more information see:
+
+        https://www.kernel.org/doc/Documentation/security/Yama.txt
+    """)
+def test_ptrace_scope():
+    ptrace_scope = '/proc/sys/kernel/yama/ptrace_scope'
+    kernel_compiled_with_yama = _kconfig_option("CONFIG_SECURITY_YAMA")
+    if not kernel_compiled_with_yama:
+        return TestResult(Result.FAIL,
+                          notes="Kernel missing CONFIG_SECURITY_YAMA")
+    enabled = int(open(ptrace_scope).read().strip())
+    rc = Result.PASS if enabled >= 1 else Result.FAIL
+    return TestResult(rc, notes="{} = {}".format(ptrace_scope, enabled))
