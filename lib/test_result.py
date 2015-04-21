@@ -3,7 +3,6 @@ from test_config import ConfigNotFound
 import test_constants
 import test_utils
 
-from collections import defaultdict
 import json
 
 """
@@ -137,13 +136,8 @@ class TestResults:
 
                 child_results = []
                 result_list = res['result'].results
-                found_results = defaultdict(lambda: False)
 
                 for child_res in result_list:
-
-                    # indicate that we have seen this result type
-                    found_results[_result_text(
-                        child_res['result'].result)] = True
 
                     # check if we should display, based on the display type
                     if _check_display_result(child_res['result'].result,
@@ -158,7 +152,7 @@ class TestResults:
                             True
                         ))
 
-                if found_results['FAIL']:
+                if res['result'].failed:
                     parent_result = Result.FAIL
                 else:
                     parent_result = Result.PASS
@@ -183,6 +177,17 @@ class TestResults:
                     print(child_string)
 
         print('\n')
+
+    @property
+    def had_failures(self):
+        for result in self._results:
+            if isinstance(result['result'], TestResult):
+                if result['result'] == Result.FAIL:
+                    return True
+            elif isinstance(result['result'], GroupTestResult):
+                if result['result'].failed:
+                    return True
+        return False
 
     def write_csv(self, filename, separator_char=test_constants.csv_separator):
         """Create a CSV file in the specified location with an optionally
@@ -271,13 +276,8 @@ class TestResults:
                 # Handle group result case
                 child_rows = []
                 result_list = res['result'].results
-                found_results = defaultdict(lambda: False)
 
                 for child_res in result_list:
-
-                    # indicate that we have seen this result type
-                    found_results[_result_text(
-                        child_res['result'].result)] = True
 
                     # check if we should display, based on the display type
                     if _check_display_result(child_res['result'].result,
@@ -287,7 +287,7 @@ class TestResults:
                             child_res['name'], child_res['result'].result,
                             child_res['result'].notes, do_indent=True))
 
-                if found_results['FAIL']:
+                if res['result'].failed:
                     parent_result = Result.FAIL
                 else:
                     parent_result = Result.PASS
@@ -394,6 +394,7 @@ class GroupTestResult():
     # GroupTestResult is a list of dicts with name and TestResult
     def __init__(self):
         self._results_list = list()
+        self._failed = False
 
     def add_result(self, name, result):
         """Add a new result to the group test results list
@@ -405,7 +406,19 @@ class GroupTestResult():
         new_result = dict()
         new_result['name'] = name
         new_result['result'] = result
+
+        if result.result == Result.FAIL:
+            self._failed = True
+
         self._results_list.append(new_result)
+
+    @property
+    def failed(self):
+        """Property to return whether the group test failed
+
+        :returns: Boolean indicating failure
+        """
+        return self._failed
 
     @property
     def results(self):

@@ -44,6 +44,11 @@ def main():
         _output_report(results, args.report_type, args.report_file,
                        display_mode=display_mode)
 
+    if results.had_failures:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
 
 def _check_root():
     """Check for root, throw error and exit if not
