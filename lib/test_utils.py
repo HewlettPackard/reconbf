@@ -345,3 +345,22 @@ def have_command(cmd):
         logger.debug("[*] {} not on $PATH".format(cmd))
 
     return False
+
+
+def get_flavor():
+    """
+    Returns the flavor listed in /etc/issue
+
+    :returns: The Linux flavor in item[0] (if Debian/RH derivative)
+    """
+    try:
+        file = open('/etc/issue', 'rb')
+        item = file.readline().split()
+    except IOError:
+        return 'OTHER'
+    file.close()
+
+    if 'Debian' in item[0] or 'Ubuntu' in item[0] or 'hLinux' in item[0]:
+        return 'DEB'
+    elif 'RedHat' in item[0] or 'CentOS' in item[0]:
+        return 'RH'
