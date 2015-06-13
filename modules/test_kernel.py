@@ -159,7 +159,7 @@ def _maps_readable(pid):
             with open(filename) as f:
                 return f.read()
         except IOError as e:
-            if e.errno not in [errno.EPERM, errno.EACCES]:
+            if e.errno not in [errno.EPERM, errno.EACCES, errno.ENOENT]:
                 raise e
 
 
