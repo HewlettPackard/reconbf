@@ -1,10 +1,10 @@
 from lib import test_class
+from lib import test_config as test_config
 from lib.test_result import GroupTestResult
 from lib.test_result import Result
 from lib.test_result import TestResult
 from lib import test_utils as utils
 
-import json
 import os
 import platform
 import stat
@@ -250,13 +250,12 @@ def test_setuid_files(config):
     if not utils.have_command("readelf") or not utils.have_command("nm"):
         return TestResult(Result.SKIP, notes="readelf needed for this test")
 
-    setup = None
-    try:
-        setup = json.loads(open(config['config_file']).read())
-    except OSError:
+    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
+                                           requirements_id="setuid")
+    if not setup:
         return TestResult(Result.SKIP, notes="Unable to find test config")
 
-    policy = setup['setuid']['policy']
+    policy = setup['policy']
     predicate = lambda x: os.path.exists(x) and _is_setuid(x) and _is_elf(x)
     return _check_binaries(policy, utils.executables_in_path(), predicate)
 
@@ -277,13 +276,13 @@ def test_setuid_files(config):
     hard coded Run Path.
     """)
 def test_system_critical(config):
-    setup = None
-    try:
-        setup = json.loads(open(config['config_file']).read())
-    except OSError:
+
+    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
+                                           requirements_id="system_critical")
+    if not setup:
         return TestResult(Result.SKIP, notes="Unable to find test config")
 
-    policy = setup['system_critical']['policy']
-    filelist = setup['system_critical']['paths']
+    policy = setup['policy']
+    filelist = setup['paths']
     predicate = lambda x: os.path.exists(x) and _is_elf(x)
     return _check_binaries(policy, filelist, predicate)

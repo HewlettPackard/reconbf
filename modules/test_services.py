@@ -1,4 +1,5 @@
 import lib.test_class as test_class
+import lib.test_config as test_config
 from lib.test_result import GroupTestResult
 from lib.test_result import Result
 from lib.test_result import TestResult
@@ -24,30 +25,20 @@ import lib.test_utils as test_utils
     """)
 def test_running_services(config):
     logger = test_utils.get_logger()
+    results = GroupTestResult()
 
     try:
         config_file = config['config_file']
-        service_reqs = test_utils.get_reqs_from_file(config_file)
-
-    # things that are going to make us skip the test:
-    #  1) Can't find entry for 'config_file' which points to the json file
-    #     that actually lists the files and permissions to check
-    #  2) Can't find/open that json file
-    #  3) File isn't valid json
     except KeyError:
-
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
+        return TestResult(Result.SKIP, "No proper config file defined")
 
-    # if we got exceptions when trying to read the config, skip the test
-    except EnvironmentError:
-        pass
-    except ValueError:
-        pass
+    service_reqs = test_config.get_reqs_from_file(config_file)
 
+    if not service_reqs:
+        return TestResult(Result.SKIP, "Unable to load module config file")
     else:
-        results = GroupTestResult()
-
         for req in service_reqs:
             if not _check_valid_req(req):
                 continue
@@ -62,9 +53,7 @@ def test_running_services(config):
 
             results.add_result(name, TestResult(result, reason))
 
-        return results
-
-    return TestResult(Result.SKIP, "Invalid test configuration")
+    return results
 
 
 @test_class.takes_config
@@ -83,28 +72,22 @@ def test_running_services(config):
     """)
 def test_service_config(config):
     logger = test_utils.get_logger()
+    results = GroupTestResult()
 
     try:
         config_file = config['config_file']
-        svccfg_reqs = test_utils.get_reqs_from_file(config_file)
-
-    # things that are going to make us skip the test:
-    #  1) Can't find entry for 'config_file' which points to the json file
-    #     that actually lists the files and permissions to check
-    #  2) Can't find/open that json file
-    #  3) File isn't valid json
     except KeyError:
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
+        return TestResult(Result.SKIP, "No proper config file defined")
 
-    # if we got exceptions when trying to read the config, skip the test
-    except EnvironmentError:
-        pass
-    except ValueError:
-        pass
+    svccfg_reqs = test_config.get_reqs_from_file(config_file)
+
+    if not svccfg_reqs:
+        return TestResult(Result.SKIP, "Unable to load module config file")
 
     else:
-        results = GroupTestResult()
+
         svccfg_reqs = _validate_svc_cfg_list(svccfg_reqs)
 
         for req in svccfg_reqs:
@@ -114,9 +97,7 @@ def test_service_config(config):
             for name, result in returned_results:
                 results.add_result(name, result)
 
-        return results
-
-    return TestResult(Result.SKIP, "Invalid config file")
+    return results
 
 
 def _check_svc_config(req):

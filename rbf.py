@@ -2,6 +2,7 @@
 from lib.test_class import TestSet
 import lib.test_config as test_config
 import lib.test_constants as test_constants
+from lib.test_profile import TestProfile
 from lib.test_result import ResultDisplayType
 import lib.test_utils as test_utils
 
@@ -13,6 +14,7 @@ import sys
 
 def main():
     args = _parse_args()
+    profile = None
 
     log_level = _log_level_from_arg(args.level)
     _init_logger(level=log_level)
@@ -20,19 +22,50 @@ def main():
 
     _check_root()
 
-    if not args.config_file:
-        test_config.config = test_config.Config('config/rbf.cfg')
-    else:
+    # if a profile was passed, set it up
+    if args.profile_dir:
+        logger = test_utils.get_logger()
+        profile = TestProfile(args.profile_dir)
+
+        if not profile.is_valid():
+            err_msg = ("[-] Problem(s) with specified profile: { "
+                       "" + args.profile_dir + " }")
+            logger.error(err_msg)
+            sys.exit(2)
+        else:
+            logger.info("[+] Found profile: " + args.profile_dir)
+
+    # prefer: 1) profile config file   2) cmd line config file  3) default
+    if profile:
+        test_config.config = test_config.Config(profile.rbf_cfg)
+        test_config.config.set_profile_config_path(profile.config_dir)
+    elif args.config_file:
         test_config.config = test_config.Config(args.config_file)
+    else:
+        test_config.config = test_config.Config('config/rbf.cfg')
 
     test_set = TestSet()
-    test_set.add_from_directory(test_constants.test_dir)
-    logger.info("[+] Loaded { " + str(test_set.count) + " } test cases")
+    added = test_set.add_from_directory(test_constants.test_dir)
+    logger.info("[+] Loaded { " + str(added) + " } tests")
+    # if we are using a profile, load modules from it as well
+    if profile:
+        added = test_set.add_from_directory(profile.modules_dir)
+        logger.info("[+] Loaded { " + str(added) + " } tests from profile")
 
-    if args.script_file is not None:
-        test_set.set_script(args.script_file)
+    if args.script_file:
+        found_script = False
+        # if a profile exists, try to find the script from its scripts dir
+        if profile:
+            if test_set.set_script(profile.scripts_dir + '/' +
+                                   args.script_file):
+                logger.info("[+] Using script { " + args.script_file +
+                            " } from profile")
+                found_script = True
 
-    logger.info("[+] Selected { " + str(test_set.count) + " } test cases")
+        # if a script wasn't found in the profile, use one from base directory
+        if not found_script:
+            test_set.set_script(args.script_file)
+    logger.info("[+] Selected { " + str(test_set.count) + " } tests")
 
     results = test_set.run()
     display_mode = _get_display_type(args.display_mode)
@@ -42,7 +75,7 @@ def main():
     # If a report was selected, generate it
     if args.report_type is not 'none':
         _output_report(results, args.report_type, args.report_file,
-                       display_mode=display_mode)
+                       display_mode=display_mode, profile=profile)
 
     if results.had_failures:
         sys.exit(1)
@@ -105,7 +138,8 @@ def _log_level_from_arg(specified_level):
     return log_level
 
 
-def _output_report(results, report_type, report_file, display_mode=None):
+def _output_report(results, report_type, report_file, display_mode=None,
+                   profile=None):
     if report_type == 'csv':
         results.write_csv(report_file)
     elif report_type == 'json':
@@ -119,6 +153,14 @@ def _output_report(results, report_type, report_file, display_mode=None):
                                           "'html_template' setting in config")
             sys.exit(2)
         else:
+            if profile:
+                templates_dir = profile.templates_dir
+            else:
+                templates_dir = 'templates'
+
+            html_template = templates_dir + '/' + html_template
+            test_utils.get_logger().info("[+] Using template from " +
+                                         html_template)
             results.write_html(report_file, html_template, display_mode)
 
 
@@ -129,6 +171,9 @@ def _parse_args():
     """
     parser = argparse.ArgumentParser(
         description='ReconBF - a Python OS security feature tester')
+
+    parser.add_argument('-p', '--profile', dest='profile_dir', action='store',
+                        default=None, type=str, help='use specified profile')
 
     parser.add_argument('-c', '--config', dest='config_file', action='store',
                         default=None, type=str, help='use specified config '
