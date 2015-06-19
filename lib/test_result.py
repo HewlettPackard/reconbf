@@ -173,8 +173,8 @@ class TestResults:
                         False)
                     print(parent_string)
 
-                for child_string in child_results:
-                    print(child_string)
+                    for child_string in child_results:
+                        print(child_string)
 
         print('\n')
 
