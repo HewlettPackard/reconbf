@@ -4,6 +4,7 @@ that they aren't specified in the config file.
 """
 
 csv_separator = '|'
+config_dir = 'config'
 file_perms_file = 'config/file_controls.cfg'
 logger_name = 'default'
 log_format_string = '%(asctime)s - %(levelname)s - %(module)s - %(message)s'

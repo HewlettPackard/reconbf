@@ -1,4 +1,5 @@
 import lib.test_class as test_class
+import lib.test_config as test_config
 from lib.test_result import GroupTestResult
 from lib.test_result import Result
 from lib.test_result import TestResult
@@ -64,23 +65,15 @@ def test_sysctl_values(config):
 
     try:
         config_file = config['config_file']
-        sysctl_reqs = test_utils.get_reqs_from_file(config_file)
-
-    # things that are going to make us skip the test:
-    #  1) Can't find entry for 'config_file' which points to the json file
-    #     that actually lists the files and permissions to check
-    #  2) Can't find/open that json file
-    #  3) File isn't valid json
     except KeyError:
         logger = test_utils.get_logger()
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
+        return TestResult(Result.SKIP, "No proper config file defined")
 
-    # if we got exceptions when trying to read the config, skip the test
-    except EnvironmentError:
-        pass
-    except ValueError:
-        pass
+    sysctl_reqs = test_config.get_reqs_from_file(config_file)
+    if not sysctl_reqs:
+        return TestResult(Result.SKIP, "Unable to load module config file")
 
     else:
         for requirement in sysctl_reqs:

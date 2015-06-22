@@ -63,6 +63,8 @@ class TestSet():
 
         logger = test_utils.get_logger()
 
+        orig_count = self.count
+
         test_list = []
 
         # try to import each python file in the plugins directory
@@ -115,7 +117,10 @@ class TestSet():
                             new_test['module'] = module_name
                             test_list.append(new_test)
 
-        self._tests = _sort_tests(test_list, SortType.MODULE_ALPHABETIC)
+        self._tests += _sort_tests(test_list, SortType.MODULE_ALPHABETIC)
+
+        # return the number of test cases added
+        return self.count - orig_count
 
     def run(self):
         """Run all tests in this TestSet and return results
@@ -123,6 +128,7 @@ class TestSet():
         :returns: Tuple containing qualified test name and result
         """
         results = list()
+
         for test in self._tests:
             cur_result = dict()
 
@@ -191,7 +197,7 @@ class TestSet():
         except IOError:
             logger.error("[-] Unable to open script file { " + script_file +
                          " }")
-            sys.exit(2)
+            return False
 
         else:
             for line in script_lines:
@@ -206,6 +212,7 @@ class TestSet():
 
         logger.info("[+] Loaded script { " + script_file + " }")
         self._tests = new_test_set
+        return True
 
     def _find_test_by_can_name(self, module_str):
         """Find a test by it's canonical name: module name + '.' + test name

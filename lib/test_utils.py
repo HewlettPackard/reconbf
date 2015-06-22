@@ -3,7 +3,6 @@ import test_constants
 
 from collections import defaultdict
 import glob
-import json
 import logging
 import os
 import subprocess
@@ -97,43 +96,6 @@ def get_logger():
     :returns: The logger instance
     """
     return logging.getLogger(test_constants.logger_name)
-
-
-def get_reqs_from_file(requirements_file, requirements_id="requirements"):
-    """Used to load a JSON file which contains configuration, and return the
-    specified object from it
-
-    :param requirements_file: The configuration file to load
-    :param requirements_id: The object to look for in the file
-    :returns: The parsed object from the JSON file
-    """
-    logger = get_logger()
-    return_value = None
-
-    logger.debug("[*] Attempting to load " + requirements_id + " from { " +
-                 requirements_file + " } .")
-
-    try:
-        with open(requirements_file, 'r') as json_file:
-            json_data = json.load(json_file)
-
-    except EnvironmentError:
-        logger.error("[-] Unable to open file { " +
-                     requirements_file + " } for reading!")
-        raise EnvironmentError
-    except ValueError:
-        logger.error("[-] File { " + requirements_file + " } does not " +
-                     "appear to be valid JSON.")
-        raise ValueError
-    else:
-        if requirements_id in json_data:
-            logger.debug("[+] {} found.", requirements_id)
-            return_value = json_data['requirements']
-        else:
-            logger.info("[-] File found but doesn't contain {}.",
-                        requirements_id)
-            return_value = []
-    return return_value
 
 
 def get_sysctl_value(path):
