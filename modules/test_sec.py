@@ -120,3 +120,60 @@ def test_sysctl_values(config):
                 logger.info("[-] Got malformed requirement " +
                             str(requirement))
     return results
+
+
+@test_class.explanation("""
+    Protection name: Certificate expiration check.
+
+    Check: Run the command "openssl verify cer.pem" and ensure the
+    stdout returns "OK" in the message.
+
+    Purpose: Certificates create a level of trust between the system
+    and the packages and pages that are signed with the certificates
+    private key. Ensuring that these certificates are both not expired
+    and are properly created certificiates will help confirm that
+    whatever communication or package that is received is valid.
+    """)
+def test_certs():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing bundled certificate validity & expiration.")
+
+    certList = []
+    certStore = '/etc/ssl/certs'
+    result = None
+    notes = ""
+
+    # use test_utils to get list of certificates
+    certList = test_utils.get_files_list_from_dir(certStore)
+
+    if certList is None:
+        notes = "/etc/ssl/certs is empty, please check on-system certificates."
+        logger.debug("[*] " + notes)
+        result = Result.SKIP
+        return TestResult(result, notes)
+
+    for cert in certList:
+        try:
+            p = Popen(['openssl', 'verify', cert], stdout=PIPE, shell=False)
+            stdout = p.communicate()
+            if "OK" in stdout[0]:
+                logger.debug("[+] Certificate verification success for: " +
+                             cert)
+                if result is None:
+                    result = Result.PASS
+            else:
+                result = Result.FAIL
+                if notes is "":
+                    notes += "Error validating certificate: " + cert
+                else:
+                    notes += ", " + cert
+                logger.debug("[-] Certificate verification failure for: " +
+                             cert)
+
+        except ValueError as e:
+            notes = "Error running 'openssl verify " + cert + "'"
+            logger.debug("[*] " + notes + ".\n" + "    Error: " + e)
+            result = Result.SKIP
+
+    logger.debug("[*] Completed on-system certificate validation tests.")
+    return TestResult(result, notes)
