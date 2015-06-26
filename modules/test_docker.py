@@ -41,6 +41,25 @@ def _get_docker_ps():
     return containers
 
 
+def _get_docker_info():
+    """Runs the docker info command.
+
+    :returns: Information about the docker installation including storage,
+    kernel, os, and initpath information.
+    """
+
+    return subprocess.check_output(['docker', 'info'])
+
+
+def _get_docker_inspect(container_id):
+    """Runs the docker inspect command.
+
+    :returns: JSON-formatted information about the container passed.
+    """
+
+    return subprocess.check_output(['docker', 'inspect', container_id])
+
+
 @test_class.explanation(
     """
     Protection name: Restrict communication between containers.
