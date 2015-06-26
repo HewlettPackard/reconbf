@@ -5,7 +5,7 @@ from lib.test_result import TestResult
 import lib.test_utils as test_utils
 
 
-def _get_docker_ps():
+def _get_docker_processes():
     """Takes the return of a get_ps_full() and strips out the cruft to
     only the docker config lines.
 
@@ -16,14 +16,29 @@ def _get_docker_ps():
     docker_ps = []
 
     for entry in process_list:
-        if entry[1] is not None:
+        if entry[1]:
             if 'docker' in entry[1]:
-                docker_ps.append(subprocess.check_output(['ps',
-                                                          '-o',
-                                                          'cmd',
-                                                          str(entry[0])]))
+                results = subprocess.check_output(['ps',
+                                                   '-o',
+                                                   'cmd',
+                                                   str(entry[0])])
+                results.pop(0)
+                docker_ps.append(results)
 
     return docker_ps
+
+
+def _get_docker_ps():
+    """Runs the docker ps command.
+
+    :returns: The output of the docker ps command (minus heading).
+    """
+
+    containers = []
+    containers = subprocess.check_output(['docker', 'ps']).split('\n')
+    containers.pop(0)
+
+    return containers
 
 
 @test_class.explanation(
@@ -39,9 +54,9 @@ def _get_docker_ps():
 def test_traffic():
     logger = test_utils.get_logger()
     logger.debug("[*] Testing for restricted traffic between containers.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -70,10 +85,10 @@ def test_traffic():
 def test_log_level():
     logger = test_utils.get_logger()
     logger.debug("[*] Checking the Docker log level.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
     # if --log-level is set in ps, else find config file and check there
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -108,9 +123,9 @@ def test_log_level():
 def test_iptables():
     logger = test_utils.get_logger()
     logger.debug("[*] Checking the firewall settings.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
     for entry in docker_ps:
@@ -138,9 +153,9 @@ def test_iptables():
 def test_insecure_registries():
     logger = test_utils.get_logger()
     logger.debug("[*] Testing for insecure registries.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -168,9 +183,9 @@ def test_insecure_registries():
 def test_port_binding():
     logger = test_utils.get_logger()
     logger.debug("[*] Testing for insecure registries.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -206,9 +221,9 @@ def test_secure_communication():
 
     logger = test_utils.get_logger()
     logger.debug("[*] Testing for insecure registries.")
-    result = "No Docker containers found."
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -256,10 +271,10 @@ def test_secure_communication():
     """)
 def test_no_lxc():
     logger = test_utils.get_logger()
-    logger.debug("[*] Testing .")
-    result = "No Docker containers found."
+    logger.debug("[*] Testing if the container is running in LXC memory.")
+    reason = "No Docker containers found."
 
-    docker_ps = _get_docker_ps()
+    docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -271,3 +286,87 @@ def test_no_lxc():
             result = TestResult(Result.PASS)
 
     return result
+
+
+@test_class.explanation(
+    """
+    Protection name: Ensure container is running in user namespace.
+
+    Check: From the output of 'docker ps' use the id to inspect the container
+    user.
+
+    Purpose: Validating the container is running in user namespace ensures
+    that memory used by the container is not being used by root.
+    """)
+def test_user_owned():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    reason = "No Docker containers found."
+
+    containers = _get_docker_ps()
+    if containers is None:
+        return TestResult(Result.SKIP, reason)
+
+    for line in containers:
+        container_id = line.split(' ')
+
+    for instance in container_id[0]:
+        results = subprocess.check_output(['docker',
+                                           'inspect',
+                                           '--format',
+                                           '{{.ID}}:{{.Config.User}}',
+                                           instance])
+        container_id = results.split(':')
+        if container_id[1] is None:
+            reason = ("Container " + str(container_id[0]) + " is running in "
+                      "root namespace.")
+            return TestResult(Result.FAIL, reason)
+        else:
+            return TestResult(Result.PASS)
+
+
+@test_class.explanation(
+    """
+    Protection name: List installed packages.
+
+    Check: This check will list all of the packages installed in a container.
+
+    Purpose: Best practice is to install as few packages as possible to
+    decrease the amount of additional processes, open ports, and other
+    items that could be used to compromise a system.
+    """)
+def list_installed_packages():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Listing installed packages.")
+    reason = "No Docker containers found."
+
+    containers = _get_docker_ps()
+    if containers is None:
+        return TestResult(Result.SKIP, reason)
+
+    for line in containers:
+        container_id = line.split(' ')
+
+    for instance in container_id[0]:
+        flavor = subprocess.check_output(['docker',
+                                          'exec',
+                                          instance,
+                                          'cat',
+                                          '/etc/issue'])
+        if 'RH' in flavor:
+            notes = subprocess.check_output(['docker',
+                                             'exec',
+                                             instance,
+                                             'rpm',
+                                             '-qa']).split('\n')
+        elif 'DEB' in flavor:
+            notes = subprocess.check_output(['docker',
+                                             'exec',
+                                             instance,
+                                             'dpkg',
+                                             '-l']).split('\n')
+        else:
+            reason = "Host is not RedHat or Debian family."
+            return TestResult(Result.SKIP, reason)
+
+    return TestResult(Result.PASS, notes)
