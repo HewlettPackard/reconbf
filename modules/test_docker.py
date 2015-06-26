@@ -22,6 +22,7 @@ def _get_docker_processes():
                                                    '-o',
                                                    'cmd',
                                                    str(entry[0])])
+                # ps -o returns the heading 'CMD', so pop that off
                 results.pop(0)
                 docker_ps.append(results)
 
@@ -36,6 +37,7 @@ def _get_docker_ps():
 
     containers = []
     containers = subprocess.check_output(['docker', 'ps']).split('\n')
+    # docker ps command returns column headings, so pop those off
     containers.pop(0)
 
     return containers
@@ -58,6 +60,28 @@ def _get_docker_inspect(container_id):
     """
 
     return subprocess.check_output(['docker', 'inspect', container_id])
+
+
+def _parse_colon_delim(list, key=''):
+    """Parses a colon-delimeted list (such as docker-info) into a dict
+    of key, value pairs.
+
+    :returns: If key is specified, the list is searched for the
+    corresponding value. If a key is not specified, a dict of both the
+    collective keys and values is returned.
+    """
+
+    conf = {}
+
+    for item in list:
+        k, v = item.split(':').strip()
+        if key:
+            if k == key:
+                return v
+        else:
+            conf[k] = v
+
+    return conf
 
 
 @test_class.explanation(
@@ -389,3 +413,30 @@ def list_installed_packages():
             return TestResult(Result.SKIP, reason)
 
     return TestResult(Result.PASS, notes)
+
+
+@test_class.explanation(
+    """
+    Protection name: Check storage driver.
+
+    Check: This check will ensure the storage driver isn't aufs.
+
+    Purpose: The aufs driver is insecure and allows a process to escape
+    the container. As such it should not be used.
+    """)
+def test_storage_driver():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Checking storage driver.")
+    notes = "No Docker containers found."
+
+    driver = _parse_colon_delim(list, key='Storage Driver')
+
+    if driver:
+        if 'aufs' in driver:
+            notes = "Storage driver set to insecure aufs."
+            return TestResult(Result.FAIL, notes)
+        else:
+            return TestResult(Result.PASS)
+    else:
+        # empty driver, odd failure
+        return TestResult(Result.SKIP, notes)
