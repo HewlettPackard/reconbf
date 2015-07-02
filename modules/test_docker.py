@@ -440,3 +440,41 @@ def test_storage_driver():
     else:
         # empty driver, odd failure
         return TestResult(Result.SKIP, notes)
+
+
+@test_class.explanation(
+    """
+    Protection name: Audit Docker daemon
+
+    Check: Look through the output of the auditctl command for an entry
+    for /usr/bin/docker to show the process is being managed by the
+    kernel audit system
+
+    Purpose: Auditctl is a "Controlled Access Protection Profiles"
+    framework that helps gather information about system events. These
+    are managed by the auditctl policy, and ensuring the Docker daemon
+    is included in these checks will help monitoring of a Docker
+    environment. Check is only valid for pre-3.11 kernels.
+    """)
+def test_docker_daemon():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Checking auditing on the Docker daemon.")
+    note = "Test is invalid for newer kernels."
+
+    kernel = subprocess.check_output(['uname', '-r'])
+    major_version = kernel[0]
+    minor_version = int(kernel[2:3])
+    if "3" in major_version:
+        if minor_version >= 12:
+            return TestResult(Result.SKIP, note)
+
+    if subprocess.check_output(['whereis', 'auditctl']):
+        audit = subprocess.check_output(['auditctl', '-l'])
+        if '/usr/bin/docker' in audit:
+            return TestResult(Result.PASS)
+        else:
+            note = "/usr/bin/docker is not being tracked in auditctl."
+            return TestResult(Result.FAIL, note)
+    else:
+        note = "The auditctl command is not installed."
+        return TestResult(Result.FAIL, note)
