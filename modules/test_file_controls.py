@@ -1,3 +1,4 @@
+import os
 import lib.test_class as test_class
 import lib.test_config as test_config
 from lib.test_result import GroupTestResult
@@ -100,65 +101,129 @@ def test_perms_and_ownership(config):
 @test_class.takes_config
 @test_class.explanation(
     """
-    Protection name: Permissions on startup scripts
+    Protection name: Permissions on direcories and files
 
-    Check: All files in the startup script directory do not have specified
+    Check: All files in the named directory(ies) do not have specified
     level of permissions granted.
 
-    Purpose: Permissions must be carefully checked on startup scripts,
-    otherwise a malicious user may exploit them to run commands as root.
+    Purpose: For some directories it's very important to validate that all of
+    the contained files have file system controls applied.  For example, most
+    users on Linux have /usr/sbin in their path, so if a malicious user can
+    mess with files in this directory it may have devastating effects on the
+    system.  Similarly important directories may include users' home directory,
+    certificate directories, and service configuration directories.
     """)
-def test_perms_on_startup_scripts(config):
-    test_result = Result.PASS
-    notes = ""
+def test_perms_files_in_dir(config):
+    results = GroupTestResult()
+
+    logger = test_utils.get_logger()
+
+    # get config file from rbf.cfg, and get requirements list
     try:
-        scripts_dir = config['scripts_dir']
-        disallowed_perms = config['disallowed_perms']
-
+        config_file = config['config_file']
     except KeyError:
-        # if we can't find scripts dir in config, skip the test
-        logger = test_utils.get_logger()
-        logger.error("[-] Can't find definition for 'scripts_dir' and/or "
-                     "disallowed_perms in module's settings, skipping test")
-        result = TestResult(Result.SKIP)
-
+        logger.error("[-] Can't find definition for 'config_file' in module's "
+                     "settings, skipping test")
+        test_result = Result.SKIP
+        notes = 'Config missing module config file'
+        return TestResult(test_result, notes)
     else:
-        malformed_perm_req_warned = False
+        dir_list = test_config.get_reqs_from_file(config_file)
 
-        scripts_list = test_utils.get_files_list_from_dir(scripts_dir,
-                                                          subdirs=True,
-                                                          files_only=False)
+    # if we can't find requirements in the file, skip the test
+    if not dir_list:
+        test_result = Result.SKIP
+        reason = 'Unable to load module config file'
+        return TestResult(test_result, reason)
 
-        if not scripts_list:
-            test_result = Result.SKIP
-            notes += "Directory { " + scripts_dir + " } doesn't exist "
-            notes += "or can't be read"
-            scripts_list = []
+    for dir_req in dir_list:
 
-        for script in scripts_list:
-            file_stat = test_utils.get_stats_on_file(script)
-            file_result = _does_perms_meet_req(file_stat, disallowed_perms)
+        check_name = "Checking files in: {}".format(dir_req['directory'])
+        notes = ""
 
-            if file_result.result == Result.FAIL:
-                test_result = Result.FAIL
-                if notes != "":
-                    notes += ", "
-                notes += "file: " + script + " " + file_result.notes
+        if 'directory' not in dir_req:
+            logger = test_utils.get_logger()
+            reason = "Requirement doesn't include directory, skipping"
+            cur_result = TestResult(Result.SKIP, reason)
+            results.add(check_name, cur_result)
 
-            elif file_result.result == Result.SKIP:
-                if not malformed_perm_req_warned:
-                    message = "Malformed permission requirements provided"
-                    logger = test_utils.get_logger()
-                    logger.error("[-] " + message)
-                    malformed_perm_req_warned = True
-                    notes += message
-                    test_result = Result.SKIP
+        # get a list of all the files in the directory, including subdirs
+        file_list = test_utils.get_files_list_from_dir(dir_req['directory'],
+                                                       subdirs=True,
+                                                       files_only=False)
 
-        if test_result == Result.PASS:
-            notes = "No permissive files in { " + scripts_dir + " } found"
-        result = TestResult(test_result, notes)
+        if not file_list:
+            reason = "Directory doesn't exist or can't be read"
+            cur_result = TestResult(Result.SKIP, reason)
+            results.add_result(check_name, cur_result)
+            continue
 
-    return result
+        fail_count = 0
+        fail_files = []
+
+        for f in file_list:
+            stats = test_utils.get_stats_on_file(f)
+
+            file_req = None
+            owner_req = None
+            group_req = None
+
+            # if we have a directory and requirements for directories
+            if(os.path.isdir(f) and
+               'dir_disallowed_perms' in dir_req):
+                    file_req = dir_req['dir_disallowed_perms']
+
+            # or we have a file and file requirements...
+            elif(os.path.isfile(f) and
+                 'file_disallowed_perms' in dir_req):
+                    file_req = dir_req['file_disallowed_perms']
+
+            if 'owner' in dir_req:
+                owner_req = dir_req['owner']
+
+            if 'group' in dir_req:
+                group_req = dir_req['group']
+
+            result_list = []
+
+            if file_req:
+                result = _does_perms_meet_req(stats, file_req)
+                result_list.append(result.result)
+
+            result = _does_owner_group_meet_req(stats, owner_req, group_req)
+            result_list.append(result.result)
+
+            if Result.FAIL in result_list:
+                fail_count += 1
+                fail_files.append(f)
+
+        if fail_count > 0:
+            owner_req = dir_req['owner'] if 'owner' in dir_req else None
+            group_req = dir_req['group'] if 'group' in dir_req else None
+            dir_perms = (dir_req['dir_disallowed_perms']
+                         if 'dir_disallowed_perms' in dir_req else None)
+            file_perms = (dir_req['file_disallowed_perms']
+                          if 'file_disallowed_perms' in dir_req else None)
+
+            reason = "{} files don't match requirements (".format(fail_count)
+
+            reason += ("file: {} ".format(dir_req['file_disallowed_perms'])
+                       if file_perms else "")
+
+            reason += ("dir: {} ".format(dir_req['dir_disallowed_perms'])
+                       if dir_perms else "")
+
+            reason += "owner: {} ".format(owner_req) if owner_req else ""
+
+            reason += "group: {} ".format(group_req) if group_req else ""
+
+            reason += "): { " + ", ".join(fail_files) + " }"
+
+            results.add_result(check_name, TestResult(Result.FAIL, reason))
+        else:
+            results.add_result(check_name, TestResult(Result.PASS))
+
+    return results
 
 
 def _does_owner_group_meet_req(stats, owners=None, groups=None):
