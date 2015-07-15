@@ -1,0 +1,8 @@
+Feature,Description,Component,Priority,Completed
+File permissions,"Check for permissions, owner, and group of a file",Recon,High,6/1/2015
+AppArmor active,Check that AppArmor is installed and contains valid profiles,Recon,High,6/1/2015
+ASLR deployed,Check that system-wide ASLR is deployed,Recon,High,6/1/2015
+Shellshock patched,Check that the shellshock vulnerability has been patched,Recon,High,6/1/2015
+Secure CPU options,"Check for CPU options PAE, no eXecute, eXecute disable",Recon,High,6/1/2015
+0-address protection,Check for 0-address protection,Recon,High,6/1/2015
+/dev/mem protection,Check for /dev/mem protection,Recon,High,6/1/2015
