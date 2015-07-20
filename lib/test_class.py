@@ -75,11 +75,15 @@ class TestSet():
 
             # try to import the module by name
             try:
-                outer = os.path.basename(os.path.normpath(directory))
-                logger.debug("[+] Importing tests from file: {0}".format(
-                             outer + '.' + module_name))
+                # get the relative path of the modules directory we are
+                # importing, and then replace / with . to get the import name
+                rel_path = os.path.relpath(directory)
+                import_path = rel_path.replace('/', '.') + '.' + module_name
 
-                module = importlib.import_module(outer + '.' + module_name)
+                logger.debug("[+] Importing tests from file: {0}".format(
+                             import_path))
+
+                module = importlib.import_module(import_path)
 
             # if it fails, die
             except ImportError as e:
