@@ -107,12 +107,19 @@ class TestResults:
         term_colors = _get_term_colors()
 
         # TODO(tmcpeak): add some way of specifying a wider terminal
+        widths = {'TEST_NAME': 60, 'TEST_RESULT': 10, 'TOTAL': 80}
+
+        # used when a test name is longer than the name field, have
+        # supporting details on the next line to make output nicer
+
         # Print header section
         print('\n')
-        print('=' * 80)
-        print('{0: <60}'.format('Test Name') + '{0: <10}'.format('Result') +
+        print('=' * widths['TOTAL'])
+
+        print('{0: <{1}}'.format('Test Name', widths['TEST_NAME']) +
+              '{0: <{1}}'.format('Result', widths['TEST_RESULT']) +
               'Notes')
-        print('=' * 80)
+        print('=' * widths['TOTAL'])
 
         for res in self._results:
             if isinstance(res['result'], TestResult):
@@ -129,7 +136,8 @@ class TestResults:
                                                          res['result'].notes,
                                                          use_color,
                                                          term_colors,
-                                                         False)
+                                                         False,
+                                                         widths)
                     print(result_string)
 
             elif isinstance(res['result'], GroupTestResult):
@@ -149,7 +157,8 @@ class TestResults:
                             child_res['result'].notes,
                             use_color,
                             term_colors,
-                            True
+                            True,
+                            widths
                         ))
 
                 if res['result'].failed:
@@ -170,7 +179,8 @@ class TestResults:
                         "",
                         use_color,
                         term_colors,
-                        False)
+                        False,
+                        widths)
                     print(parent_string)
 
                     for child_string in child_results:
@@ -429,7 +439,8 @@ class GroupTestResult():
         return self._results_list
 
 
-def _build_result_string(name, result, notes, use_color, term_colors, indent):
+def _build_result_string(name, result, notes, use_color, term_colors, indent,
+                         widths):
         """Internal utility function to build a result string
 
         :param name: Name of test
@@ -437,8 +448,11 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent):
         :param notes: Associated with the test
         :param use_color: Boolean indicating whether color should be displayed
         :param indent: Boolean indicating if test name should be indented
+        :param widths: Dict with field widths
         :returns:
         """
+
+        name_newline_str = '\n' + ' ' * widths['TEST_NAME']
 
         # Set the output color and text result based on test result
         result_color = ""
@@ -459,14 +473,17 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent):
         result_string = ""
 
         # Add the test name and tab if applicable
-        result_string += '{0: <60}'.format(tab + name)
+        result_string += '{0: <{1}}'.format(tab + name, widths['TEST_NAME'])
+
+        if len(tab + name) > widths['TEST_NAME']:
+            result_string += name_newline_str
 
         # Add the color formatter if we are outputting color
         if use_color:
             result_string += result_color
 
         # Add the result string
-        result_string += '{0: <10}'.format(pass_string)
+        result_string += '{0: <{1}}'.format(pass_string, widths['TEST_RESULT'])
 
         # If we're outputting color, terminate the color string
         if use_color:
