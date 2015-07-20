@@ -99,6 +99,8 @@ def test_traffic():
     logger.debug("[*] Testing for restricted traffic between containers.")
     reason = "No Docker containers found."
 
+    result = None
+
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
@@ -129,6 +131,8 @@ def test_log_level():
     logger = test_utils.get_logger()
     logger.debug("[*] Checking the Docker log level.")
     reason = "No Docker containers found."
+
+    result = None
 
     # if --log-level is set in ps, else find config file and check there
     docker_ps = _get_docker_processes()
@@ -168,6 +172,8 @@ def test_iptables():
     logger.debug("[*] Checking the firewall settings.")
     reason = "No Docker containers found."
 
+    result = None
+
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
@@ -198,6 +204,8 @@ def test_insecure_registries():
     logger.debug("[*] Testing for insecure registries.")
     reason = "No Docker containers found."
 
+    result = None
+
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
@@ -227,6 +235,8 @@ def test_port_binding():
     logger = test_utils.get_logger()
     logger.debug("[*] Testing for insecure registries.")
     reason = "No Docker containers found."
+
+    result = None
 
     docker_ps = _get_docker_processes()
     if docker_ps is None:
@@ -317,6 +327,8 @@ def test_no_lxc():
     logger.debug("[*] Testing if the container is running in LXC memory.")
     reason = "No Docker containers found."
 
+    result = None
+
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
@@ -378,7 +390,7 @@ def test_user_owned():
     decrease the amount of additional processes, open ports, and other
     items that could be used to compromise a system.
     """)
-def list_installed_packages():
+def test_list_installed_packages():
     logger = test_utils.get_logger()
     logger.debug("[*] Listing installed packages.")
     reason = "No Docker containers found."

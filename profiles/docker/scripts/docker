@@ -1,1 +1,12 @@
 test_file_controls.test_perms_and_ownership
+test_docker.test_traffic
+test_docker.test_log_level
+test_docker.test_iptables
+test_docker.test_insecure_registries
+test_docker.test_port_binding
+test_docker.test_secure_communication
+test_docker.test_no_lxc
+test_docker.test_user_owned
+test_docker.test_storage_driver
+test_docker.test_docker_daemon
+test_docker.test_list_installed_packages
