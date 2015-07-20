@@ -23,7 +23,8 @@ def _get_docker_processes():
                                                    'cmd',
                                                    str(entry[0])])
                 # ps -o returns the heading 'CMD', so pop that off
-                results.pop(0)
+                results_list = results.split('\n')
+                results_list.pop(0)
                 docker_ps.append(results)
 
     return docker_ps
@@ -36,9 +37,12 @@ def _get_docker_ps():
     """
 
     containers = []
-    containers = subprocess.check_output(['docker', 'ps']).split('\n')
-    # docker ps command returns column headings, so pop those off
-    containers.pop(0)
+    try:
+        containers = subprocess.check_output(['docker', 'ps']).split('\n')
+        # docker ps command returns column headings, so pop those off
+        containers.pop(0)
+    except OSError:
+        return None
 
     return containers
 
@@ -62,8 +66,8 @@ def _get_docker_inspect(container_id):
     return subprocess.check_output(['docker', 'inspect', container_id])
 
 
-def _parse_colon_delim(list, key=''):
-    """Parses a colon-delimeted list (such as docker-info) into a dict
+def _parse_colon_delim(input_list, key=''):
+    """Parses a colon-delimited list (such as docker-info) into a dict
     of key, value pairs.
 
     :returns: If key is specified, the list is searched for the
@@ -73,7 +77,10 @@ def _parse_colon_delim(list, key=''):
 
     conf = {}
 
-    for item in list:
+    if not isinstance(input_list, list):
+        return None
+
+    for item in input_list:
         k, v = item.split(':').strip()
         if key:
             if k == key:
@@ -149,8 +156,8 @@ def test_log_level():
             result = TestResult(Result.FAIL, reason)
 
         else:
-            logger.info("Recommended Docker log level is 'info'.")
-            result = TestResult(Result.PASS)
+            notes = "Recommended Docker log level is 'info'."
+            result = TestResult(Result.PASS, notes)
 
     return result
 
@@ -393,10 +400,11 @@ def test_user_owned():
 def test_list_installed_packages():
     logger = test_utils.get_logger()
     logger.debug("[*] Listing installed packages.")
-    reason = "No Docker containers found."
+    notes = ""
 
     containers = _get_docker_ps()
     if containers is None:
+        reason = "No Docker containers found."
         return TestResult(Result.SKIP, reason)
 
     for line in containers:
@@ -473,9 +481,9 @@ def test_docker_daemon():
     logger.debug("[*] Checking auditing on the Docker daemon.")
     note = "Test is invalid for newer kernels."
 
-    kernel = subprocess.check_output(['uname', '-r'])
+    kernel = subprocess.check_output(['uname', '-r']).split('.')
     major_version = kernel[0]
-    minor_version = int(kernel[2:3])
+    minor_version = int(kernel[1])
     if "3" in major_version:
         if minor_version >= 12:
             return TestResult(Result.SKIP, note)
