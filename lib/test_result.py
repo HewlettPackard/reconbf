@@ -132,8 +132,9 @@ class TestResults:
                         ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
                     # truncate notes to not overwhelm output
-                    if res['result'].notes:
-                        notes = res['result'].notes[0:97] + '...'
+                    notes = res['result'].notes
+                    if notes and len(notes) > 100:
+                        notes = notes[0:97] + '...'
 
                     result_string = _build_result_string(res['name'],
                                                          res['result'].result,
@@ -156,8 +157,9 @@ class TestResults:
                                              display_type):
 
                         # truncate notes to not overwhelm output
-                        if child_res['result'].notes:
-                            notes = child_res['result'].notes[0:97] + '...'
+                        notes = child_res['result'].notes
+                        if notes and len(notes) > 100:
+                            notes = notes[0:97] + '...'
 
                         child_results.append(_build_result_string(
                             child_res['name'],
