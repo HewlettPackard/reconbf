@@ -1,7 +1,6 @@
 import subprocess
 import lib.test_class as test_class
-from lib.test_result import Result
-from lib.test_result import TestResult
+from lib.test_result import Result, GroupTestResult, TestResult
 import lib.test_utils as test_utils
 
 
@@ -41,6 +40,22 @@ def _get_docker_ps():
         containers = subprocess.check_output(['docker', 'ps']).split('\n')
         # docker ps command returns column headings, so pop those off
         containers.pop(0)
+    except OSError:
+        return None
+
+    return containers
+
+
+def _get_docker_container():
+    """Runs the docker ps -q command.
+
+    :returns: The output of the docker ps command (minus heading).
+    """
+    containers = []
+    try:
+        containers = subprocess.check_output(['docker',
+                                              'ps',
+                                              '-q']).split('\n')
     except OSError:
         return None
 
@@ -498,3 +513,170 @@ def test_docker_daemon():
     else:
         note = "The auditctl command is not installed."
         return TestResult(Result.FAIL, note)
+
+
+@test_class.explanation(
+    """
+    Protection name: Privileged container checks
+
+    Check: Check to ensure that privileged containers
+    are not being used.
+
+    Purpose: The --privileged flag gives all capabilities
+    to the container, and it also lifts all the limitations
+    enforced by the device cgroup controller. If this flag is
+    set to true, this presents a vulnerability as this flag allows
+    the container can then do almost everything that the host can do.
+    """)
+def test_docker_privilege():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: {{.HostConfig.Privileged }}'
+
+    if containers is None:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            entry = test.split(':')
+
+            if 'false' in entry:
+                result = TestResult(Result.PASS)
+            else:
+                notes = ("Container " + str(container_id) + " is running with "
+                         "privileged flags set to true.")
+                result = TestResult(Result.FAIL, notes)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Container memory limitations.
+
+    Check: Checks to ensure that memory limitations are set.
+
+    Purpose: If memory limitations are not set this can cause an
+    inadvertant Denial of Service for the host machine as docker can
+    use all of the allotted memory given to a host machine.
+    """)
+def test_memory_limit():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container has memory limitations.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    if containers is None:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            '{{.ID}}:{{.Config.Memory}}',
+                                            container_id])
+            mem_test = test.split(':')
+            try:
+                memory = mem_test[1].strip('\n')
+            except IndexError:
+                notes = ("Container: " + str(container_id) + "returns "
+                         "a malformed memory value.")
+                result = TestResult(Result.SKIP, notes)
+            else:
+                if memory == '<no value>':
+                    notes = ("Container " + str(container_id) + " is running "
+                             "with no value given for memory limitations.")
+                    result = TestResult(Result.FAIL, notes)
+                elif memory is None:
+                    notes = ("Container " + str(container_id) + " is running "
+                             "without memory limitations.")
+                    result = TestResult(Result.FAIL, notes)
+                elif int(memory) <= 0:
+                    notes = ("Container " + str(container_id) + " is running "
+                             "without memory limitations.")
+                    result = TestResult(Result.FAIL, notes)
+                else:
+                    result = TestResult(Result.PASS)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Priviledge port mapping.
+
+    Check: Containers should not use port numbers with
+    a value above 1024.
+
+    Purpose: If port numbers above 1024 are utilized the
+    users run the risk of ability to receive and transmit
+    various sensitive and privileged data. Allowing containers
+    to use them can bring serious implications.
+    """)
+def test_privilege_port_mapping():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container has memory limitations.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    if containers is None:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'port',
+                                            container_id])
+            pn = test.split(':')
+            try:
+                port_number = str(pn[1])
+            except IndexError:
+                notes = ("Container: " + str(container_id) + "returns "
+                         "a malformed port number value.")
+                result = TestResult(Result.SKIP, notes)
+            else:
+                if int(port_number) <= 1024:
+                    notes = ("Container " + str(container_id) + " is running "
+                             "privileged port number - " + str(port_number)
+                             + ".")
+                    result = TestResult(Result.FAIL, notes)
+                elif port_number == '':
+                    notes = ("Container " + str(container_id) + " does not"
+                             "have a port number assigned.")
+                    result = TestResult(Result.FAIL, notes)
+                elif port_number is None:
+                    notes = ("Container " + str(container_id) + " does not"
+                             "have a port number assigned.")
+                    result = TestResult(Result.FAIL, notes)
+                else:
+                    result = TestResult(Result.PASS)
+            results.add_result(check, result)
+    return results

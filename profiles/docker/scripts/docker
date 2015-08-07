@@ -10,3 +10,6 @@ test_docker.test_user_owned
 test_docker.test_storage_driver
 test_docker.test_docker_daemon
 test_docker.test_list_installed_packages
+test_docker.test_docker_privilege
+test_docker.test_memory_limit
+test_docker.test_privilege_port_mapping
