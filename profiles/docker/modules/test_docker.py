@@ -381,7 +381,7 @@ def test_user_owned():
     reason = "No Docker containers found."
 
     containers = _get_docker_ps()
-    if containers is None:
+    if not containers:
         return TestResult(Result.SKIP, reason)
 
     for line in containers:
@@ -418,7 +418,7 @@ def test_list_installed_packages():
     notes = ""
 
     containers = _get_docker_ps()
-    if containers is None:
+    if not containers:
         reason = "No Docker containers found."
         return TestResult(Result.SKIP, reason)
 
@@ -539,7 +539,7 @@ def test_docker_privilege():
 
     testcmd = '{{ .Id }}: {{.HostConfig.Privileged }}'
 
-    if containers is None:
+    if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
@@ -584,7 +584,7 @@ def test_memory_limit():
 
     containers = _get_docker_container()
 
-    if containers is None:
+    if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
@@ -644,7 +644,7 @@ def test_privilege_port_mapping():
 
     containers = _get_docker_container()
 
-    if containers is None:
+    if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
@@ -678,5 +678,284 @@ def test_privilege_port_mapping():
                     result = TestResult(Result.FAIL, notes)
                 else:
                     result = TestResult(Result.PASS)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Network Mode value.
+
+    Check: Containers should not use "host" Network
+    Mode.
+
+    Purpose: If Network Mode is set to host there is the
+    potential that containers will be allowing processes
+    to open low-numbered ports like any other root process.
+    """)
+def test_host_network_mode():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if 'host' not in test:
+                result = TestResult(Result.PASS)
+            else:
+                notes = ("Container " + str(container_id) + " is running in "
+                         "host Network Mode.")
+                result = TestResult(Result.FAIL, notes)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Check CPU priority settings.
+
+    Check: Containers should be checked that CPU priority
+    is set appropriately.
+
+    Purpose: If a return of 0 or 1024 is given, it means
+    the CPU shares are not in place. Some containers may
+    require more CPU allocation than others therefore not
+    setting shares could lead to an inadvertant Denial of
+    Service.
+    """)
+def test_cpu_priority():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container has memory limitations.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: CpuShares={{ .Config.CpuShares }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+            cpu_test = test.split(':')
+            try:
+                cpu_return = cpu_test[1].strip('\n')
+            except IndexError:
+                notes = ("Container: " + str(container_id) + "returns "
+                         "a malformed CPU share value.")
+                result = TestResult(Result.SKIP, notes)
+            else:
+                if '<no value>' not in cpu_return:
+                    notes = ("Container " + str(container_id) + " is running "
+                             "with no value given for CPU share limitations.")
+                    result = TestResult(Result.FAIL, notes)
+                elif not cpu_return:
+                    notes = ("Container " + str(container_id) + " is running "
+                             "with no value given for CPU share limitations.")
+                    result = TestResult(Result.SKIP, notes)
+                elif int(cpu_return) == 0 or int(cpu_return) == 1024:
+                    notes = ("Container " + str(container_id) + " do not have "
+                             "CPU shares in place.")
+                    result = TestResult(Result.FAIL, notes)
+                else:
+                    result = TestResult(Result.PASS)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Read only root file system.
+
+    Check: Check to ensure that container's root filesystem
+    is mounted as read only.
+
+    Purpose: Data should not be written within containers. The
+    data volume belonging to a container should be explicitly
+    defined and administered.
+    """)
+def test_read_only_root_fs():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: ReadonlyRootfs={{ .HostConfig.ReadonlyRootfs }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if 'false' in test:
+                result = TestResult(Result.PASS)
+            else:
+                notes = ("Container " + str(container_id) + " has a file "
+                         "system with permissions that are not read only.")
+                result = TestResult(Result.FAIL, notes)
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Limit container restart tries.
+
+    Check: Check to ensure that container's restart policy settings
+    are set appropriately.
+
+    Purpose: If you indefinitely keep trying to start the container,
+    it could possibly lead to a denial of service on the host, therefore
+    tries to restart the container should be set to no more than 5. If a
+    container's value is set to 'RestartPolicyName=no' or just 'RestartPolicy
+    Name=' this is considered compliant as the container will never attempt to
+    restart.
+    """)
+def test_restart_policy():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '''{{ .Id }}: RestartPolicyName={{ .HostConfig.RestartPolicy.Name }}
+    MaximumRetryCount={{ .HostConfig.RestartPolicy.MaximumRetryCount }}'''
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+            try:
+                entry = test.split(':')
+                r = entry[1].split('=')
+                restart_policy = r[1].split(" ")
+                max_retry = r[2]
+                policy = str(restart_policy[0])
+
+            except IndexError:
+                notes = ("Container: " + str(container_id) + "returns "
+                         "a malformed restart policy value.")
+                result = TestResult(Result.SKIP, notes)
+            else:
+                if 'no' in policy or policy == " ":
+                    result = TestResult(Result.PASS)
+                elif policy is None:
+                    result = TestResult(Result.PASS)
+                elif policy == 'always':
+                    notes = ("Container " + str(container_id) + " will always "
+                             "restart regardless of max retry count. This is "
+                             " not recommended.")
+                    result = TestResult(Result.FAIL, notes)
+                elif policy == 'on-failure':
+                    if int(max_retry) <= 5:
+                        result = TestResult(Result.PASS)
+                    else:
+                        notes = ("Container " + str(container_id) + " max "
+                                 "retry count set to a non-compliant level.")
+                        result = TestResult(Result.FAIL, notes)
+                else:
+                    notes = ("Cannot test. Container " + str(container_id) +
+                             " settings not returning an expected value.")
+                    result = TestResult(Result.SKIP, notes)
+                results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Host process namespace sharing
+
+    Check: Check that containers are not sharing host
+    process namespaces.
+
+    Purpose: If host process namespaces are being shared with
+    containers it would allow processes within the container
+    to see all of the processes on the host system. Thus breaking
+    the benefit of process level isolation between the host and
+    the containers.
+    """)
+def test_docker_pid_mode():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: PidMode={{ .HostConfig.PidMode }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if 'host' in test:
+                notes = ("Container " + str(container_id) + " is sharing "
+                         "host process namespaces.")
+                result = TestResult(Result.FAIL, notes)
+            else:
+                result = TestResult(Result.PASS)
+
             results.add_result(check, result)
     return results

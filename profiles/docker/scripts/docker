@@ -13,3 +13,8 @@ test_docker.test_list_installed_packages
 test_docker.test_docker_privilege
 test_docker.test_memory_limit
 test_docker.test_privilege_port_mapping
+test_docker.test_host_network_mode
+test_docker.test_cpu_priority
+test_docker.test_read_only_root_fs
+test_docker.test_restart_policy
+test_docker.test_docker_pid_mode
