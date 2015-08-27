@@ -66,7 +66,7 @@ class Config:
                 cur_item = cur_item[level]
             else:
                 logger = test_utils.get_logger()
-                logger.error("[-] Unable to get config value: " + config_path)
+                logger.info("[-] Unable to get config value: " + config_path)
                 raise ConfigNotFound
 
         return cur_item
