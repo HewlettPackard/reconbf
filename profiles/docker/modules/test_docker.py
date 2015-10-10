@@ -959,3 +959,149 @@ def test_docker_pid_mode():
 
             results.add_result(check, result)
     return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Sensitive host system directories
+
+    Check: Check that containers are not mounting sensitive
+    host system directories on containers.
+
+    Purpose: If sensitive directories are mounted in read-write mode,
+    it would be possible to make changes to files within those sensitive
+    directories. The changes might bring down security implications or
+    unwarranted changes that could put the Docker host in compromised
+    state.
+    """)
+def test_mount_sensitive_directories():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: Volumes={{ .Volumes }} VolumesRW={{ .VolumesRW }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if ':true' in test:
+                notes = ("Container " + str(container_id) + " has "
+                         "sensitive host system directories " +
+                         "mounted.")
+                result = TestResult(Result.FAIL, notes)
+            else:
+                result = TestResult(Result.PASS)
+
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Host IPC namespace
+
+    Check: Check that containers are not sharing namespaces with
+    host IPCs.
+
+    Purpose: IPC namespace provides separation of IPC between the host and
+    containers. If the host's IPC namespace is shared with the container, it
+    would basically allow processes within the container to see all of the
+    IPC on the host system.
+    """)
+def test_IPC_host():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: IpcMode={{ .HostConfig.Devices }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if 'host' in test:
+                notes = ("Container " + str(container_id) + " is "
+                         "sharing IPC namespace with the container. ")
+                result = TestResult(Result.FAIL, notes)
+            else:
+                result = TestResult(Result.PASS)
+
+            results.add_result(check, result)
+    return results
+
+
+@test_class.explanation(
+    """
+    Protection name: Ulimit default override
+
+    Check: Check that containers are not running with ulimit
+    defaults.
+
+    Purpose: Ulimit provides control over the resources
+    available to the shell and to processes started by it.
+    Setting system resource limits judiciously saves you from
+    many vulnerabilities such as a fork bomb.
+    """)
+def test_ulimit_default_override():
+    logger = test_utils.get_logger()
+    logger.debug("[*] Testing if the container is running in user namespace.")
+    notes = "No Docker containers found or docker is not running."
+
+    results = GroupTestResult()
+
+    containers = _get_docker_container()
+
+    testcmd = '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}'
+
+    if not containers:
+        return TestResult(Result.SKIP, notes)
+
+    for container_id in containers:
+        if container_id == '':
+            pass
+        else:
+            check = "Checking container: " + str(container_id)
+            test = subprocess.check_output(['docker',
+                                            'inspect',
+                                            '--format',
+                                            testcmd,
+                                            container_id])
+
+            if '<no value>' in test:
+                result = TestResult(Result.PASS)
+            else:
+                notes = ("Container " + str(container_id) + " is "
+                         "running with default ulimits in place. ")
+                result = TestResult(Result.FAIL, notes)
+
+            results.add_result(check, result)
+    return results
