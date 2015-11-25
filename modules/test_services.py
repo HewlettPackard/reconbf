@@ -1,3 +1,4 @@
+from lib.logger import logger
 import lib.test_class as test_class
 import lib.test_config as test_config
 from lib.test_result import GroupTestResult
@@ -24,7 +25,6 @@ import lib.test_utils as test_utils
     access to the system.
     """)
 def test_running_services(config):
-    logger = test_utils.get_logger()
     results = GroupTestResult()
 
     try:
@@ -71,7 +71,6 @@ def test_running_services(config):
     and the purpose of this test is to detect insecure settings.
     """)
 def test_service_config(config):
-    logger = test_utils.get_logger()
     results = GroupTestResult()
 
     try:
@@ -214,12 +213,11 @@ def _check_valid_req(req):
     :returns: None if the requirement is not valid, otherwise True
     """
 
-    logger = test_utils.get_logger()
-
     # if the requirement does not contain all required fields
     if(not req['services'] or not req['expected'] or not req['match']
             or not req['fail']):
-        logger.error("[-] Service requirement missing required field: " + req)
+        logger.error("[-] Service requirement missing required field: {}".
+                     format(req))
         return None
 
     # check correct values for requirement
@@ -228,17 +226,17 @@ def _check_valid_req(req):
         return None
 
     elif req['expected'] not in ['on', 'off']:
-        logger.error("[-] Expected value of 'on' or 'off' for 'expected': " +
-                     req)
+        logger.error("[-] Expected value of 'on' or 'off' for 'expected': {}".
+                     format(req))
         return None
 
     elif req['match'] not in ['all', 'one']:
-        logger.error("[-] Expected value of 'all' or 'one' for 'match': " +
-                     req)
+        logger.error("[-] Expected value of 'all' or 'one' for 'match': {}".
+                     format(req))
 
     elif req['fail'] not in ['True', 'False']:
-        logger.error("[-] Expected value of 'True' or 'False' for 'fail': " +
-                     req)
+        logger.error("[-] Expected value of 'True' or 'False' for 'fail': {}".
+                     format(req))
 
     else:
         return True
@@ -312,14 +310,14 @@ def _validate_svc_cfg_list(reqs_list):
 
         # if the config check doesn't have 'name', it isn't valid, don't add
         if 'name' not in config or not type(config['name']) == unicode:
-            test_utils.get_logger().error("Service config requirement must " +
-                                          "have a 'name': " + str(config))
+            logger.error("Service config requirement must have a 'name': {}".
+                         format(config))
             continue
 
         # if the config check doesn't have 'config', it isn't valid, don't add
         if 'config' not in config or not type(config['config']) == unicode:
-            test_utils.get_logger().error("Service config requirement must " +
-                                          "have a 'config': " + str(config))
+            logger.error("Service config requirement must have a 'config': {}".
+                         format(config))
             continue
 
         # have we seen something in this config that makes it invalid?
@@ -337,20 +335,20 @@ def _validate_svc_cfg_list(reqs_list):
                 # make sure that the config contains a dict
                 if type(config[config_value]) != dict:
 
-                    log_msg = config['name'] + ': Expected a dictionary of '
-                    log_msg += '"allowed"/"disallowed" values, got: '
-                    log_msg += str(type(config[config_value]))
-                    test_utils.get_logger().error(log_msg)
+                    logger.error("{}: Expected a dictionary of 'allowed/"
+                                 "disallowed' values, got: {}".
+                                 format(config['name'],
+                                        type(config[config_value])))
                     continue
 
                 # make sure one of 'allowed' or 'disallowed' are present
                 if("allowed" not in config[config_value] and
                         "disallowed" not in config[config_value]):
 
-                    log_msg = config['name'] + ': Expected "allowed" or '
-                    log_msg += '"disallowed" setting in '
-                    log_msg += str(config[config_value])
-                    test_utils.get_logger().error(log_msg)
+                    logger.error("{}: Expected 'allowed or disallowed setting "
+                                 "in {}".
+                                 format(config['name'],
+                                        config['config_value']))
                     continue
 
                 # ensure that each option requirement has allowed or disallowed
@@ -362,9 +360,9 @@ def _validate_svc_cfg_list(reqs_list):
                     # disallowed, then it's an improper entry
                     if check not in ["allowed", "disallowed"]:
 
-                        log_msg = config['name'] + ': Expect only "allowed" '
-                        log_msg += 'or "disallowed": ' + str(check_value)
-                        test_utils.get_logger().error(log_msg)
+                        logger.error("{}: Expect only 'allowed or disallowed' "
+                                     "{}".
+                                     format(config['name'], check_value))
                         valid_config = False
 
                     # if the values for the "allowed" and "disallowed" aren't
@@ -372,10 +370,9 @@ def _validate_svc_cfg_list(reqs_list):
                     elif not (type(check_value) == list or
                               check_value == "*"):
 
-                            log_msg = config['name'] + 'Value must be a "*" or'
-                            log_msg += ' a list of strings, got: '
-                            log_msg += str(check_value)
-                            test_utils.get_logger().error(log_msg)
+                            logger.error("{} Value must be a '*' or a list of "
+                                         "strings, got: {}".
+                                         format(config['name'], check_value))
                             valid_config = False
 
         if valid_config:

@@ -1,4 +1,4 @@
-import test_utils
+from logger import logger
 
 import json
 import sys
@@ -21,8 +21,6 @@ class ConfigNotFound(Exception):
 
 class Config:
     def __init__(self, config_file):
-        logger = test_utils.get_logger()
-
         # default config search path
         self._config_paths = ['config']
 
@@ -32,13 +30,13 @@ class Config:
                 json_data = json.load(json_file)
 
         except EnvironmentError:
-            logger.error("[-] Unable to open config file { " + config_file +
-                         " }")
+            logger.error("[-] Unable to open config file [ {} ] ".
+                         format(config_file))
             sys.exit(2)
 
         except ValueError:
-            logger.error("[-] File { " + config_file + " } does not appear "
-                         "to be valid JSON.")
+            logger.error("[-] File [ {} ] does not appear to be valid JSON.".
+                         format(config_file))
             sys.exit(2)
 
         else:
@@ -65,8 +63,8 @@ class Config:
             if level in cur_item:
                 cur_item = cur_item[level]
             else:
-                logger = test_utils.get_logger()
-                logger.info("[-] Unable to get config value: " + config_path)
+                logger.info("[-] Unable to get config value: {}".
+                            format(config_path))
                 raise ConfigNotFound
 
         return cur_item
@@ -80,15 +78,14 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
     :param requirements_id: The object to look for in the file
     :returns: The parsed object from the JSON file
     """
-    logger = test_utils.get_logger()
-    logger.debug("[*] Attempting to load " + requirements_id + " from { " +
-                 requirements_file + " } .")
+    logger.debug("[*] Attempting to load {} from [ {} ]".
+                 format(requirements_id, requirements_file))
 
     paths = config.config_paths
 
     for path in paths:
-        logger.debug("[*] Trying to read module config file " +
-                     requirements_file + " from path " + path)
+        logger.debug("[*] Trying to read module config file {} from path {}".
+                     format(requirements_file, path))
         try:
             with open(path + "/" + requirements_file, 'r') as json_file:
                 json_data = json.load(json_file)
@@ -100,21 +97,21 @@ def get_reqs_from_file(requirements_file, requirements_id="requirements"):
 
         except ValueError:
             # if we got bad JSON, log the error and return None
-            logger.error("[-] File { " + requirements_file + " } does not " +
-                         "appear to be valid JSON.")
+            logger.error("[-] File [ {} ] does not appear to be valid JSON.".
+                         format(requirements_file))
             return None
 
         else:
             # ok, we were able to parse JSON, is requirement in it?
             if requirements_id in json_data:
-                logger.debug("[+] Config " + requirements_id + " found in " +
-                             "path: " + path)
+                logger.debug("[+] Config {} found in path: {}".
+                             format(requirements_id, path))
                 return json_data[requirements_id]
             else:
-                logger.info("[-] File found but doesn't contain {}.",
-                            requirements_id)
+                logger.info("[-] File found but doesn't contain {}.".
+                            format(requirements_id))
                 return []
 
-    logger.error("[-] Unable to open file { " + requirements_file +
-                 " } for reading!")
+    logger.error("[-] Unable to open file [ {} ] for reading!".
+                 format(requirements_file))
     return None

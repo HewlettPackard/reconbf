@@ -1,7 +1,7 @@
+from lib.logger import logger
 import lib.test_class as test_class
 from lib.test_result import Result
 from lib.test_result import TestResult
-import lib.test_utils as test_utils
 
 import gzip
 from subprocess import check_output
@@ -19,19 +19,18 @@ from subprocess import check_output
     overflow attacks.
     """)
 def test_NX():
-    logger = test_utils.get_logger()
     logger.debug("[*] Checking if NX (or NX emulation) is present.")
 
     output = check_output(["dmesg"])
     if 'NX (Execute Disable) protection: active' in output:
         reason = "NX protection active in BIOS."
-        logger.debug("[+]" + reason)
+        logger.debug("[+] {}".format(reason))
         result = Result.PASS
 
     else:
         # not active
         reason = "NX protection disabled in BIOS."
-        logger.debug("[-]" + reason)
+        logger.debug("[-] {}".format(reason))
         result = Result.FAIL
 
     return TestResult(result, reason)
@@ -53,7 +52,6 @@ def test_NX():
 def test_devmem():
     # initial configurations
     reason = " "
-    logger = test_utils.get_logger()
     logger.debug("[*] Attempting to validate /dev/mem protection.")
     result = Result.FAIL  # set fail by default?
 
@@ -64,19 +62,17 @@ def test_devmem():
 
         if "CONFIG_STRICT_DEVMEM=y" in kernel_cfg:
             reason = "/dev/mem protection is enabled."
-            logger.debug("[+] " + reason)
+            logger.debug("[+] {}".format(reason))
             result = Result.PASS
         elif "CONFIG_STRICT_DEVMEM=n" in kernel_cfg:
             reason = "/dev/mem protection is not enabled."
-            logger.debug("[-] " + reason)
+            logger.debug("[-] {}".format(reason))
             result = Result.FAIL
 
     except IOError as e:
         reason = "Error opening /proc/config.gz."
-        logger.debug("[*] Unable to open /proc/config.gz.")
-        logger.debug("    Exception information: {")
-        logger.debug(e)
-        logger.debug("    }")
+        logger.debug("[*] Unable to open /proc/config.gz.\n"
+                     "    Exception information: [ {} ]".format(e))
         result = Result.SKIP
 
     return TestResult(result, reason)

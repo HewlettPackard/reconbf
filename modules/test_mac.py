@@ -1,7 +1,7 @@
+from lib.logger import logger
 import lib.test_class as test_class
 from lib.test_result import Result
 from lib.test_result import TestResult
-import lib.test_utils as test_utils
 
 from subprocess import PIPE
 from subprocess import Popen
@@ -25,7 +25,6 @@ def test_selinux():
     """
 
     # logger
-    logger = test_utils.get_logger()
     return_result = None
     logger.debug("[*] Attempting to validate SELinux is installed.")
 
@@ -38,40 +37,35 @@ def test_selinux():
 
         if 'sestatus: not found' in stderr:
             reason = "SELinux is not installed."
-            logger.info("[-] " + reason)
+            logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         elif 'disabled' in stdout:
             reason = "SELinux is disabled."
-            logger.info("[-]" + reason)
+            logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         elif 'permissive' in stdout:
             reason = "SELinux is permissive (disabled but logging)."
-            logger.info("[-] " + reason)
+            logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         elif 'enforcing' in stdout:
             reason = "SELinux is installed and enforcing."
-            logger.info("[-] " + reason)
+            logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.PASS)
 
         else:
             # wth?
-            logger.debug("[*] Unexpected error while looking for SELinux: {")
-            logger.debug("    Standard Output from sestatus command: {")
-            logger.debug(stdout)
-            logger.debug("    }")
-            logger.debug("    Standard Error from sestatus command: {")
-            logger.debug(stderr)
-            logger.debug("    }  }")
+            logger.debug("[*] Unexpected error while looking for SELinux: "
+                         "    Standard Output from sestatus command: [{}]"
+                         "    Standard Error from sestatus command: [{}]".
+                         format(stdout, stderr))
             return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     except EnvironmentError as e:
         # log no selinux
-        logger.debug("[*] Unexpected error running sestatus: {")
-        logger.debug(e)
-        logger.debug("}")
+        logger.debug("[*] Unexpected error running sestatus: [{}]".format(e))
         return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     return return_result
@@ -97,7 +91,6 @@ def test_apparmor():
     """
 
     # initial configurations
-    logger = test_utils.get_logger()
     return_result = None
     logger.debug("[*] Attempting to validate AppArmor is installed.")
 
@@ -109,34 +102,30 @@ def test_apparmor():
 
         if 'apparmor_status: command not found' in stderr:
             reason = "AppArmor is not installed."
-            logger.debug("[-] " + reason)
+            logger.debug("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         # enforcing check, no /'s = no directories
         elif "//" not in stdout:
             reason = "AppArmor has no modules loaded."
-            logger.info("[-] " + reason)
+            logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         elif "//" in stdout:
             reason = "AppArmor is installed and policy is loaded."
-            logger.info("[+] " + reason)
+            logger.info("[+] {}".format(reason))
             return_result = TestResult(Result.PASS)
         else:
             # wth?
-            logger.debug("[*] Unexpected error while looking for AppArmor: {")
-            logger.debug("    Standard Output from sestatus command: {")
-            logger.debug(stdout)
-            logger.debug("    }")
-            logger.debug("    Standard Error from sestatus command: {")
-            logger.debug(stderr)
-            logger.debug("    }  }")
+            logger.debug("[*] Unexpected error while looking for AppArmor: "
+                         "    Standard Output from sestatus command: [{}]"
+                         "    Standard Error from sestatus command: [{}]".
+                         format(stdout, stderr))
             return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     except EnvironmentError as e:
-        logger.debug("[*] Unexpected error running apparmor_status: {")
-        logger.debug(e)
-        logger.debug("}")
+        logger.debug("[*] Unexpected error running apparmor_status: [{}]".
+                     format(e))
         return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     return return_result

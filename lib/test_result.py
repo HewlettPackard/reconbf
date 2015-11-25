@@ -1,7 +1,7 @@
+from logger import logger
 import test_config
 from test_config import ConfigNotFound
 import test_constants
-import test_utils
 
 import json
 
@@ -222,8 +222,7 @@ class TestResults:
         :param separator_char: (optional) Separator character for fields
         :return: -
         """
-        logger = test_utils.get_logger()
-        logger.info("[*] Preparing to write CSV file { " + filename + " }")
+        logger.info("[*] Preparing to write CSV file [ {} ] ".format(filename))
 
         # TODO(tmcpeak): Fix write CSV to use a real CSV library
         # TODO(tmcpeak): Fix write CSV to reflect new results list structure
@@ -254,11 +253,11 @@ class TestResults:
                     csv_output.write(line + "\n")
 
         except EnvironmentError:
-            logger.info("[-] Unable to open CSV file { " + filename + " } " +
-                        "for writing!")
+            logger.info("[-] Unable to open CSV file [ {} ] for writing".
+                        format(filename))
         else:
-            logger.info("[+] Writing CSV file: { " + filename + " } " +
-                        "successful!")
+            logger.info("[+] Writing CSV file: [ {} ] successful ".
+                        format(filename))
 
     def write_html(self, filename, html_template,
                    display_type=ResultDisplayType.DISPLAY_NOT_PASS):
@@ -274,8 +273,8 @@ class TestResults:
 
         html_rows = ""
 
-        logger = test_utils.get_logger()
-        logger.info("[*] Preparing to write HTML file: { " + filename + " }")
+        logger.info("[*] Preparing to write HTML file: [ {} ]".
+                    format(filename))
 
         for res in self._results:
             if isinstance(res['result'], TestResult):
@@ -332,8 +331,8 @@ class TestResults:
             template_content = temp_file.read()
             temp_file.close()
         except EnvironmentError:
-            logger.error("[-] Unable to open template file: { " +
-                         html_template + " }")
+            logger.error("[-] Unable to open template file: [ {} ]".
+                         format(html_template))
             return
 
         template_content = template_content.replace(RESULTS_MARKER, html_rows)
@@ -341,13 +340,13 @@ class TestResults:
         try:
             output_file = open(filename, 'w')
         except EnvironmentError:
-            logger.error("[-] Unable to open output file: {" +
-                         filename + " } for writing")
+            logger.error("[-] Unable to open output file: [ {} ] for writing".
+                         format(filename))
         else:
             output_file.write(template_content)
             output_file.close()
-            logger.info("[+] Successfully wrote HTML file: { " + filename +
-                        " }")
+            logger.info("[+] Successfully wrote HTML file: [ {} ]".
+                        format(filename))
 
     def write_json(self, filename):
         """Create a JSON file in the specified location
@@ -357,8 +356,7 @@ class TestResults:
         :param filename:
         :returns: -
         """
-        logger = test_utils.get_logger()
-        logger.info("[*] Preparing to write JSON file { " + filename + " }")
+        logger.info("[*] Preparing to write JSON file [ {} ]".format(filename))
 
         # Get the test results into an object format that can be serialized
         tests = []
@@ -389,11 +387,11 @@ class TestResults:
                 # sort keys so that we have deterministic results
                 json.dump(tests, json_output_file, indent=4)
         except EnvironmentError:
-            logger.info("[-] Unable to open JSON file { " + filename + " } " +
-                        "for writing!")
+            logger.info("[-] Unable to open JSON file [ {} ] for writing!".
+                        format(filename))
         else:
-            logger.info("[+] Writing JSON file: { " + filename + " } " +
-                        "successful!")
+            logger.info("[+] Writing JSON file: [ {} ] successful!".
+                        format(filename))
 
 
 class TestResult():
@@ -590,7 +588,6 @@ def _get_term_colors():
             term_colors[color] = "\033[" + term_colors[color].split('[')[1]
 
     except ConfigNotFound:
-        logger = test_utils.get_logger()
         logger.info("[*] One or more terminal colors not loaded from config, "
                     "using defaults")
         term_colors['pass'] = test_constants.term_color_pass

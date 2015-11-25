@@ -1,3 +1,4 @@
+from lib.logger import logger
 from lib import test_class
 from lib import test_config as test_config
 from lib.test_result import GroupTestResult
@@ -121,7 +122,6 @@ def _check_fortify(path):
     can leave executables open to various attacks. This detects
     binaries that have either rpath or runpath enabled.
     """
-    logger = utils.get_logger()
 
     libc = '/lib/libc.so.6'
     if platform.machine() == 'x86_64':
@@ -148,7 +148,6 @@ def _extract_symbols(cmd):
     :param cmd: The way to invoke 'nm' command.
     :returns: Generated symbols resulting from nm invocation.
     """
-    logger = utils.get_logger()
     try:
         null = open(os.devnull, 'w')
         entries = subprocess.check_output(cmd, stderr=null)
@@ -167,7 +166,8 @@ def _extract_symbols(cmd):
 
                 yield (sym_addr, sym_type, sym_name.split('@@')[0])
             except ValueError as err:
-                logger.debug('[*] Unexpected output {' + entry.strip() + '}')
+                logger.debug('[*] Unexpected output [ {} ]'.format(
+                    entry.strip()))
 
     except subprocess.CalledProcessError as err:
         logger.debug(err)

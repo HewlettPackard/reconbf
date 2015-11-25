@@ -1,5 +1,5 @@
+from logger import logger
 import os
-import test_utils
 
 
 class TestProfile:
@@ -16,13 +16,12 @@ class TestProfile:
         #  /config, /scripts, /modules/, /templates, /config/rbf.cfg
         # if any of these don't exist, log errors and return False
 
-        logger = test_utils.get_logger()
         reasons = []
 
         if not os.path.isdir(self.profile_loc):
             reasons.append("Specified profile location doesn't exist")
         else:
-            logger.debug("[*] Using profile: " + self.profile_loc)
+            logger.debug("[*] Using profile: {}".format(self.profile_loc))
 
         if not os.path.isdir(self.config_dir):
             reasons.append("Specified profile doesn't contain config dir")
@@ -43,7 +42,7 @@ class TestProfile:
             return True
         else:
             for reason in reasons:
-                logger.error('[-] ' + reason)
+                logger.error('[-] {}'.format(reason))
             return False
 
     @property

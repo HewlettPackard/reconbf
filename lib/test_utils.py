@@ -1,9 +1,9 @@
+from logger import logger
 import test_config
 import test_constants
 
 from collections import defaultdict
 import glob
-import logging
 import os
 import subprocess
 
@@ -23,14 +23,13 @@ def check_path_exists(path):
     :param path: The path to check
     :returns: True or False
     """
-    logger = get_logger()
     logger.debug("[*] Testing for existence of path { " + path + " }")
 
     return_value = os.path.exists(path)
     if return_value:
-        logger.debug("[+] Path { " + path + " } exists")
+        logger.debug("[+] Path [ {} ] exists".format(path))
     else:
-        logger.debug("[-] Path { " + path + " } doesn't exist")
+        logger.debug("[-] Path [ {} ] doesn't exist".format(path))
 
     return return_value
 
@@ -42,17 +41,17 @@ def get_stats_on_file(file_name):
     :param file_name: The filename to get stat for
     :returns: an os.stat return value
     """
-    logger = get_logger()
-    logger.debug("[*] Retrieving permission for file { " + file_name + "}")
+    logger.debug("[*] Retrieving permission for file [ {} ] ".
+                 format(file_name))
 
     return_value = None
     try:
         return_value = os.stat(file_name)
     except OSError:
-        logger.info("[*] Stat for { " + file_name + " } failed")
+        logger.info("[*] Stat for [ {} ] failed".format(file_name))
     else:
-        logger.debug("[+] Permissions: " + str(return_value) + " found for " +
-                     "{ " + file_name + " }")
+        logger.debug("[+] Permissions: {} found for [ {} ]".
+                     format(return_value, file_name))
     return return_value
 
 
@@ -66,13 +65,12 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     """
     return_list = None
 
-    logger = get_logger()
-    logger.debug("[*] Listing files from directory { " + base_path + " }")
+    logger.debug("[*] Listing files from directory [ {} ] ".format(base_path))
 
     if not check_path_exists(base_path):
         pass
     elif not os.path.isdir(base_path):
-        logger.debug("[-] Path { " + base_path + " } is not a directory")
+        logger.debug("[-] Path [ {} ] is not a directory".format(base_path))
     else:
         # we have a directory, get all the files from it
         return_list = []
@@ -90,14 +88,6 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     return return_list
 
 
-def get_logger():
-    """Used to get the constant logger
-
-    :returns: The logger instance
-    """
-    return logging.getLogger(test_constants.logger_name)
-
-
 def get_sysctl_value(path):
     """Used to retrieve the value of a sysctl setting.  Uses a configurable
     base sysctl path. Raises a ValNotFound exception if the setting can't
@@ -106,8 +96,7 @@ def get_sysctl_value(path):
     :param path: The path relative to base sysctl of the setting to retrieve
     :returns: The value of the specified sysctl setting
     """
-    logger = get_logger()
-    logger.debug("[*] Testing for sysctl value { " + path + " }")
+    logger.debug("[*] Testing for sysctl value [ {} ] ".format(path))
 
     # load sysctl_path from config if possible, otherwise grab default
     config = test_config.config
@@ -123,13 +112,14 @@ def get_sysctl_value(path):
         with open(file_path, 'r') as sysctl_file:
             value = sysctl_file.readline().strip()
     except IOError:
-        logger.warning("[-] Sysctl path { " + file_path + " } not found")
+        logger.warning("[-] Sysctl path [ {} ] not found".format(file_path))
         raise ValNotFound
     except EnvironmentError:
-        logger.debug("[-] Unable to read sysctl value { " + file_path + " }")
+        logger.debug("[-] Unable to read sysctl value [ {} ]".
+                     format(file_path))
         raise ValNotFound
     else:
-        logger.debug("[+] Value found: { " + value + " }")
+        logger.debug("[+] Value found: [ {} ] ".format(value))
 
     return value
 
@@ -140,7 +130,6 @@ def running_processes():
     :returns: A list containing tuples of the pid of a running process
               and the executable file that launched it (if it exists).
     """
-    logger = get_logger()
     procs = []
     for path in glob.glob('/proc/[0-9]*'):
         pid = int(os.path.basename(path))
@@ -148,7 +137,7 @@ def running_processes():
         try:
             exe = os.path.realpath('/proc/{}/exe'.format(pid))
         except OSError:
-            logger.debug("[*] Unable to locate exe for {" + str(pid) + "}")
+            logger.debug("[*] Unable to locate exe for [ {} ]".format(pid))
         procs.append((pid, exe))
 
     return procs
@@ -171,7 +160,7 @@ def is_service_running(service_name):
 
     # service command doesn't exist...
     except OSError:
-        get_logger().error("[-] Unable to call service command")
+        logger.error("[-] Unable to call service command")
 
     except subprocess.CalledProcessError:
         # this indicates service is not running
@@ -189,7 +178,6 @@ def executables_in_path():
 
     :returns: A list of all executables on the $PATH
     """
-    logger = get_logger()
     executables = []
     try:
         syspath = os.environ['PATH']
@@ -227,8 +215,8 @@ def config_search(filename, config_descriptor, comment_delims=['#'],
             config_lines = fp.readlines()
 
     except IOError:
-        get_logger().error("[-] Unable to read config file: { " +
-                           filename + " }")
+        logger.error("[-] Unable to read config file: [ {} ] ".
+                     format(filename))
         raise IOError
 
     config_sections = defaultdict(dict)
@@ -280,8 +268,8 @@ def config_search(filename, config_descriptor, comment_delims=['#'],
         option = config_descriptors[1]
 
     else:
-        get_logger().error('[-] Malformed config descriptor: { ' +
-                           config_descriptor + " }")
+        logger.error('[-] Malformed config descriptor: [ {} ]'.
+                     format(config_descriptor))
         return None
 
     try:
@@ -297,7 +285,6 @@ def have_command(cmd):
     :param cmd: The command to check for using 'which'
     :returns: True if the supplied command is available on the path
     """
-    logger = get_logger()
     try:
         null = open(os.devnull, 'w')
         rc = subprocess.check_call(['which', cmd], stdout=null, stderr=null)

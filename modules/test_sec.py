@@ -1,3 +1,4 @@
+from lib.logger import logger
 import lib.test_class as test_class
 import lib.test_config as test_config
 from lib.test_result import GroupTestResult
@@ -24,7 +25,6 @@ from subprocess import Popen
     use a version of bash which has been patched.
     """)
 def test_shellshock(config):
-    logger = test_utils.get_logger()
     logger.debug("[*] Testing shell for 'shellshock/bashbug' vulnerability.")
 
     try:
@@ -38,11 +38,11 @@ def test_shellshock(config):
 
         if 'vulnerable' in stdout:
             reason = "System is vulnerable to Shellshock/Bashbug."
-            logger.info("[-] " + reason)
+            logger.info("[-] {}".format(reason))
             result = Result.FAIL
         else:
             reason = "System is not vulnerable to Shellshock/Bashbug."
-            logger.info("[+] " + reason)
+            logger.info("[+] {}".format(reason))
             result = Result.PASS
         return TestResult(result, reason)
 
@@ -60,13 +60,11 @@ def test_shellshock(config):
     check verifies that secure values have been used where applicable.
     """)
 def test_sysctl_values(config):
-    logger = test_utils.get_logger()
     results = GroupTestResult()
 
     try:
         config_file = config['config_file']
     except KeyError:
-        logger = test_utils.get_logger()
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
         return TestResult(Result.SKIP, "No proper config file defined")
@@ -110,8 +108,8 @@ def test_sysctl_values(config):
                                    TestResult(cur_result, notes=notes))
 
             else:
-                logger.info("[-] Got malformed requirement " +
-                            str(requirement))
+                logger.info("[-] Got malformed requirement {}".
+                            format(requirement))
     return results
 
 
@@ -128,7 +126,6 @@ def test_sysctl_values(config):
     whatever communication or package that is received is valid.
     """)
 def test_certs():
-    logger = test_utils.get_logger()
     logger.debug("[*] Testing bundled certificate validity & expiration.")
 
     certList = []
@@ -141,7 +138,7 @@ def test_certs():
 
     if certList is None:
         notes = "/etc/ssl/certs is empty, please check on-system certificates."
-        logger.debug("[*] " + notes)
+        logger.debug("[*] {}".format(notes))
         result = Result.SKIP
         return TestResult(result, notes)
 
@@ -150,8 +147,8 @@ def test_certs():
             p = Popen(['openssl', 'verify', cert], stdout=PIPE, shell=False)
             stdout = p.communicate()
             if "OK" in stdout[0]:
-                logger.debug("[+] Certificate verification success for: " +
-                             cert)
+                logger.debug("[+] Certificate verification success for: {}".
+                             format(cert))
                 if result is None:
                     result = Result.PASS
             else:
@@ -160,12 +157,12 @@ def test_certs():
                     notes += "Error validating certificate: " + cert
                 else:
                     notes += ", " + cert
-                logger.debug("[-] Certificate verification failure for: " +
-                             cert)
+                logger.debug("[-] Certificate verification failure for: {}".
+                             format(cert))
 
         except ValueError as e:
             notes = "Error running 'openssl verify " + cert + "'"
-            logger.debug("[*] " + notes + ".\n" + "    Error: " + e)
+            logger.debug("[*] {}. \n   Error: {}".format(notes, e))
             result = Result.SKIP
 
     logger.debug("[*] Completed on-system certificate validation tests.")
