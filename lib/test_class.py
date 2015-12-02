@@ -1,7 +1,7 @@
+from logger import logger
 import test_config
 from test_config import ConfigNotFound
 from test_result import TestResults
-import test_utils
 
 import glob
 import importlib
@@ -61,8 +61,6 @@ class TestSet():
         :return: None
         """
 
-        logger = test_utils.get_logger()
-
         orig_count = self.count
 
         test_list = []
@@ -80,16 +78,16 @@ class TestSet():
                 rel_path = os.path.relpath(directory)
                 import_path = rel_path.replace('/', '.') + '.' + module_name
 
-                logger.debug("[+] Importing tests from file: {0}".format(
-                             import_path))
+                logger.debug("[+] Importing tests from file: {}".
+                             format(import_path))
 
                 module = importlib.import_module(import_path)
 
             # if it fails, die
             except ImportError as e:
-                logger.error("[-] Could not import test module '%s.%s'" %
-                             (directory, module_name))
-                logger.error("\tdetail: '%s'" % str(e))
+                logger.error("[-] Could not import test module '{}.{}'".
+                             format(directory, module_name))
+                logger.error("\tdetail: '{}'".format(e))
                 sys.exit(2)
 
             # otherwise we want to obtain a list of all functions in the module
@@ -111,8 +109,9 @@ class TestSet():
                         except AttributeError as e:
                             # we really shouldn't get here... just to be safe
                             logger.error("[-] Could not locate test function "
-                                         "'%s' in module '%s.%s'" %
-                                         (fn_name, directory, module_name))
+                                         "'{}' in module '{}.{}'".
+                                         format(fn_name, directory,
+                                                module_name))
                             sys.exit(2)
                         else:
                             new_test = dict()
@@ -147,27 +146,24 @@ class TestSet():
                 try:
                     conf = config.get_config('modules.' + test_name)
                 except ConfigNotFound:
-                    logger = test_utils.get_logger()
-                    logger.error("[-] Test {" + test_name + "} requires " +
-                                 "config but config could not be found.  " +
-                                 "Skipping...")
+                    logger.error("[-] Test [ {} ] requires config but could"
+                                 "not be found.  Skipping...".
+                                 format(test_name))
                 else:
                     try:
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
                     except Exception as e:
-                        logger = test_utils.get_logger()
-                        logger.error("[-] Exception in test {" + test_name +
-                                     "}: " + e.message)
+                        logger.error("[-] Exception in test [ {} ]: {}".
+                                     format(test_name, e.message))
 
             else:
                 try:
                     test_result = fn()
                 # catch anything that goes wrong with a test
                 except Exception as e:
-                    logger = test_utils.get_logger()
-                    logger.error("[-] Exception in test {" + test_name +
-                                 "}: " + e.message)
+                    logger.error("[-] Exception in test [ {} ]: {}".
+                                 format(test_name, e.message))
 
             # If the test actually ran...
             if test_result:
@@ -191,7 +187,6 @@ class TestSet():
 
         script_lines = []
         new_test_set = []
-        logger = test_utils.get_logger()
 
         try:
             script_f = open(script_file, 'r')
@@ -199,8 +194,8 @@ class TestSet():
             script_f.close()
 
         except IOError:
-            logger.error("[-] Unable to open script file { " + script_file +
-                         " }")
+            logger.error("[-] Unable to open script file [ {} ]".
+                         format(script_file))
             return False
 
         else:
@@ -209,12 +204,12 @@ class TestSet():
                 # and add it
                 test = self._find_test_by_can_name(line.strip())
                 if not test:
-                    logger.error("[-] Unable to find test: { " +
-                                 line.strip('\n') + " }")
+                    logger.error("[-] Unable to find test: [ {} ]".
+                                 format(line.strip('\n')))
                     sys.exit(2)
                 new_test_set.append(test)
 
-        logger.info("[+] Loaded script { " + script_file + " }")
+        logger.info("[+] Loaded script [ {} ]".format(script_file))
         self._tests = new_test_set
         return True
 
@@ -224,14 +219,13 @@ class TestSet():
         :returns: The test dictionary for specified test
         """
 
-        logger = test_utils.get_logger()
-
         # module name is the part before the . , test name is the part after
         module_ids = module_str.split('.')
 
         # if we don't have a well-formed canonical name, don't try to find it
         if len(module_ids) != 2:
-            logger.error("[-] Malformed script line: { " + module_str + " }")
+            logger.error("[-] Malformed script line: [ {} ]".
+                         format(module_str))
             return None
 
         for test in self._tests:

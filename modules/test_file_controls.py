@@ -1,4 +1,5 @@
 import os
+from lib.logger import logger
 import lib.test_class as test_class
 import lib.test_config as test_config
 from lib.test_result import GroupTestResult
@@ -41,7 +42,6 @@ def test_perms_and_ownership(config):
     try:
         config_file = config['config_file']
     except KeyError:
-        logger = test_utils.get_logger()
         logger.error("[-] Can't find definition for 'config_file' in module's "
                      "settings, skipping test")
         return TestResult(Result.SKIP, 'Config missing module config file')
@@ -68,9 +68,8 @@ def test_perms_and_ownership(config):
                     result = _does_perms_meet_req(stats,
                                                   req['disallowed_perms'])
                     if result.result == Result.SKIP:
-                        logger = test_utils.get_logger()
-                        logger.info("[-] Got malformed permission " +
-                                    "requirement: " + req['disallowed_perms'])
+                        logger.info("[-] Got malformed permission requirement "
+                                    "{}".format(req['disallowed_perms']))
 
                     results.add_result(check_name, result)
 
@@ -116,8 +115,6 @@ def test_perms_and_ownership(config):
 def test_perms_files_in_dir(config):
     results = GroupTestResult()
 
-    logger = test_utils.get_logger()
-
     # get config file from rbf.cfg, and get requirements list
     try:
         config_file = config['config_file']
@@ -142,7 +139,6 @@ def test_perms_files_in_dir(config):
         notes = ""
 
         if 'directory' not in dir_req:
-            logger = test_utils.get_logger()
             reason = "Requirement doesn't include directory, skipping"
             cur_result = TestResult(Result.SKIP, reason)
             results.add(check_name, cur_result)

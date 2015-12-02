@@ -1,10 +1,10 @@
 # ReconBF main module and test runner
+from lib.logger import logger
 from lib.test_class import TestSet
 import lib.test_config as test_config
 import lib.test_constants as test_constants
 from lib.test_profile import TestProfile
 from lib.test_result import ResultDisplayType
-import lib.test_utils as test_utils
 
 import argparse
 import logging
@@ -18,22 +18,19 @@ def main():
 
     log_level = _log_level_from_arg(args.level)
     _init_logger(level=log_level)
-    logger = test_utils.get_logger()
 
     _check_root()
 
     # if a profile was passed, set it up
     if args.profile_dir:
-        logger = test_utils.get_logger()
         profile = TestProfile(args.profile_dir)
 
         if not profile.is_valid():
-            err_msg = ("[-] Problem(s) with specified profile: { "
-                       "" + args.profile_dir + " }")
-            logger.error(err_msg)
+            logger.error("[-] Problem(s) with specified profile: [ {} "
+                         "]".format(args.profile_dir))
             sys.exit(2)
         else:
-            logger.info("[+] Found profile: " + args.profile_dir)
+            logger.info("[+] Found profile: {}".format(args.profile_dir))
 
     # prefer: 1) profile config file   2) cmd line config file  3) default
     if profile:
@@ -46,11 +43,11 @@ def main():
 
     test_set = TestSet()
     added = test_set.add_from_directory(test_constants.test_dir)
-    logger.info("[+] Loaded { " + str(added) + " } tests")
+    logger.info("[+] Loaded [ {} ] tests".format(added))
     # if we are using a profile, load modules from it as well
     if profile:
         added = test_set.add_from_directory(profile.modules_dir)
-        logger.info("[+] Loaded { " + str(added) + " } tests from profile")
+        logger.info("[+] Loaded [ {} ] tests from profile".format(added))
 
     if args.script_file:
         found_script = False
@@ -58,14 +55,14 @@ def main():
         if profile:
             if test_set.set_script(profile.scripts_dir + '/' +
                                    args.script_file):
-                logger.info("[+] Using script { " + args.script_file +
-                            " } from profile")
+                logger.info("[+] Using script [ {} ] from profile".format(
+                    args.script_file))
                 found_script = True
 
         # if a script wasn't found in the profile, use one from base directory
         if not found_script:
             test_set.set_script(args.script_file)
-    logger.info("[+] Selected { " + str(test_set.count) + " } tests")
+    logger.info("[+] Selected [ {} ] tests".format(test_set.count))
 
     results = test_set.run()
     display_mode = _get_display_type(args.display_mode)
@@ -88,7 +85,6 @@ def _check_root():
 
     :return: -
     """
-    logger = test_utils.get_logger()
     if os.getuid() != 0:
         logger.error("[-] RBF must be run as root!")
         sys.exit(2)
@@ -107,22 +103,6 @@ def _get_display_type(display_mode):
     return return_val
 
 
-def _init_logger(level=logging.DEBUG):
-    """Initialize the global logger
-
-    :return: -
-    """
-
-    formatter = logging.Formatter(fmt=test_constants.log_format_string)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(test_constants.logger_name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-
-
 def _log_level_from_arg(specified_level):
     """Change user supplied log level string to logging level
 
@@ -138,6 +118,17 @@ def _log_level_from_arg(specified_level):
     return log_level
 
 
+def _init_logger(level):
+    formatter = logging.Formatter(fmt=test_constants.log_format_string)
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    global_logger = logging.getLogger(test_constants.logger_name)
+    global_logger.setLevel(level)
+    global_logger.addHandler(handler)
+
+
 def _output_report(results, report_type, report_file, display_mode=None,
                    profile=None):
     if report_type == 'csv':
@@ -149,8 +140,8 @@ def _output_report(results, report_type, report_file, display_mode=None,
         try:
             html_template = config.get_config('html_template')
         except KeyError:
-            test_utils.get_logger().error("[-] Unable to find " +
-                                          "'html_template' setting in config")
+            logger.error("[-] Unable to find 'html_template' setting in "
+                         "config")
             sys.exit(2)
         else:
             if profile:
@@ -159,8 +150,7 @@ def _output_report(results, report_type, report_file, display_mode=None,
                 templates_dir = 'templates'
 
             html_template = templates_dir + '/' + html_template
-            test_utils.get_logger().info("[+] Using template from " +
-                                         html_template)
+            logger.info("[+] Using template from {}".format(html_template))
             results.write_html(report_file, html_template, display_mode)
 
 

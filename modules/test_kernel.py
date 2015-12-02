@@ -1,4 +1,3 @@
-
 import ctypes
 import errno
 import os
@@ -6,9 +5,9 @@ import pwd
 import subprocess
 from multiprocessing import Process, Value
 
+from lib.logger import logger
 from lib import test_class
 from lib.test_result import GroupTestResult, Result, TestResult
-from lib import test_utils as utils
 
 
 def _kernel_version():
@@ -43,7 +42,7 @@ def _kconfig_option(option, config=None):
         config = _kconfig()
 
     if not config:
-        utils.get_logger().info("[-] Unable to find kernel config!")
+        logger.info("[-] Unable to find kernel config!")
         return None
 
     for line in config.split('\n'):

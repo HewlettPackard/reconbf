@@ -1,7 +1,7 @@
+from lib.logger import logger
 import lib.test_class as test_class
 from lib.test_result import Result
 from lib.test_result import TestResult
-import lib.test_utils as test_utils
 
 try:
     import grp
@@ -9,7 +9,7 @@ try:
 
     import spwd
 except ImportError as e:
-    test_utils.get_logger().error("[-] Error importing module: " + e.message)
+    logger.error("[-] Error importing module: {}".format(e.message))
 
 from collections import defaultdict
 import subprocess
