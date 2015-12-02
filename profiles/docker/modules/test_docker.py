@@ -957,7 +957,6 @@ def test_docker_pid_mode():
     state.
     """)
 def test_mount_sensitive_directories():
-    logger = test_utils.get_logger()
     logger.debug("[*] Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
@@ -1006,7 +1005,6 @@ def test_mount_sensitive_directories():
     IPC on the host system.
     """)
 def test_IPC_host():
-    logger = test_utils.get_logger()
     logger.debug("[*] Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
@@ -1054,7 +1052,6 @@ def test_IPC_host():
     many vulnerabilities such as a fork bomb.
     """)
 def test_ulimit_default_override():
-    logger = test_utils.get_logger()
     logger.debug("[*] Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
