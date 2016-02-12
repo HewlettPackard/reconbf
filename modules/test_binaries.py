@@ -105,12 +105,9 @@ def _check_pie(path):
 
 
 def _check_runpath(path):
-    """Fortify Source - This introduces support for
-    detecting buffer overflows in various functions that perform
-    operations on memory and strings. The indicator for this is
-    symbols such as __sprintf_chk rather then __sprintf. To compile
-    an executable with fortify source enabled:
-        $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
+    """Run Path - Baking in a fixed run path to shared libraries
+    can leave executables open to various attacks. This detects
+    binaries that have either rpath or runpath enabled.
     """
 
     dyn = _elf_dynamic(path)
@@ -118,9 +115,12 @@ def _check_runpath(path):
 
 
 def _check_fortify(path):
-    """Run Path - Baking in a fixed run path to shared libraries
-    can leave executables open to various attacks. This detects
-    binaries that have either rpath or runpath enabled.
+    """Fortify Source - This introduces support for
+    detecting buffer overflows in various functions that perform
+    operations on memory and strings. The indicator for this is
+    symbols such as __sprintf_chk rather then __sprintf. To compile
+    an executable with fortify source enabled:
+        $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
     """
 
     libc = '/lib/libc.so.6'
