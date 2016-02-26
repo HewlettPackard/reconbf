@@ -71,23 +71,22 @@ class TestSet():
 
             module_name = os.path.basename(test_file).split('.')[0]
 
+            # get the relative path of the modules directory we are
+            # importing, and then replace / with . to get the import name
+            rel_path = os.path.relpath(directory)
+            import_path = rel_path.replace('/', '.') + '.' + module_name
+
+            logger.debug("[+] Importing tests from file: {}".
+                         format(import_path))
+
             # try to import the module by name
             try:
-                # get the relative path of the modules directory we are
-                # importing, and then replace / with . to get the import name
-                rel_path = os.path.relpath(directory)
-                import_path = rel_path.replace('/', '.') + '.' + module_name
-
-                logger.debug("[+] Importing tests from file: {}".
-                             format(import_path))
-
                 module = importlib.import_module(import_path)
 
             # if it fails, die
-            except ImportError as e:
-                logger.error("[-] Could not import test module '{}.{}'".
-                             format(directory, module_name))
-                logger.error("\tdetail: '{}'".format(e))
+            except ImportError:
+                logger.exception("[-] Could not import test module '{}'".
+                                 format(import_path))
                 sys.exit(2)
 
             # otherwise we want to obtain a list of all functions in the module
