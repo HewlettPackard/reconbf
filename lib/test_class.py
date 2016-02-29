@@ -106,7 +106,7 @@ class TestSet():
                     if str(fn_name).startswith(fn_name_pat):
                         try:
                             function = getattr(module, fn_name)
-                        except AttributeError as e:
+                        except AttributeError:
                             # we really shouldn't get here... just to be safe
                             logger.error("[-] Could not locate test function "
                                          "'{}' in module '{}.{}'".
