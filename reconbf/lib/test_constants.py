@@ -14,5 +14,5 @@ term_color_end = '\033[0;m'
 term_color_fail = '\033[0;31m'
 term_color_pass = '\033[0;32m'
 term_color_skip = '\033[0;33m'
-test_dir = 'modules/'
+test_dir = 'reconbf/modules/'
 trace_line_seq = "     "

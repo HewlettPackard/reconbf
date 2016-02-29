@@ -1,7 +1,7 @@
-from lib.logger import logger
-import lib.test_class as test_class
-from lib.test_result import Result
-from lib.test_result import TestResult
+from reconbf.lib.logger import logger
+import reconbf.lib.test_class as test_class
+from reconbf.lib.test_result import Result
+from reconbf.lib.test_result import TestResult
 
 try:
     import grp

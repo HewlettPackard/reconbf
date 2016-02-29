@@ -5,9 +5,9 @@ import pwd
 import subprocess
 from multiprocessing import Process, Value
 
-from lib.logger import logger
-from lib import test_class
-from lib.test_result import GroupTestResult, Result, TestResult
+from reconbf.lib.logger import logger
+from reconbf.lib import test_class
+from reconbf.lib.test_result import GroupTestResult, Result, TestResult
 
 
 def _kernel_version():

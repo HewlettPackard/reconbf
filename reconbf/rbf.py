@@ -201,4 +201,9 @@ def _parse_args():
 
 
 if __name__ == "__main__":
-    main()
+    # if the script is being run directly, rebase the path one dir higher
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.remove(current_dir)
+    sys.path.insert(0, os.path.dirname(current_dir))
+    import reconbf.rbf
+    reconbf.rbf.main()

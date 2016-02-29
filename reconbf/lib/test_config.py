@@ -21,6 +21,7 @@ class ConfigNotFound(Exception):
 
 class Config:
     def __init__(self, config_file):
+
         # default config search path
         self._config_paths = ['config']
 

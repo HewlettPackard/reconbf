@@ -1,10 +1,10 @@
-from lib.logger import logger
-from lib import test_class
-from lib import test_config as test_config
-from lib.test_result import GroupTestResult
-from lib.test_result import Result
-from lib.test_result import TestResult
-from lib import test_utils as utils
+from reconbf.lib.logger import logger
+from reconbf.lib import test_class
+from reconbf.lib import test_config as test_config
+from reconbf.lib.test_result import GroupTestResult
+from reconbf.lib.test_result import Result
+from reconbf.lib.test_result import TestResult
+from reconbf.lib import test_utils as utils
 
 import os
 import platform

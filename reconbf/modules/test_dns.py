@@ -1,6 +1,6 @@
-import lib.test_class as test_class
-from lib.test_result import TestResult
-from lib.test_result import Result
+import reconbf.lib.test_class as test_class
+from reconbf.lib.test_result import TestResult
+from reconbf.lib.test_result import Result
 import subprocess as s
 
 
