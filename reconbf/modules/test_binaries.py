@@ -80,7 +80,7 @@ def _check_nx(path):
     """
     headers = _elf_prog_headers(path)
     for line in headers.split(b'\n'):
-        if b'GNU_STACK' and b'RWE' not in line:
+        if b'GNU_STACK' in line and b'RWE' not in line:
             return True
 
     return False
