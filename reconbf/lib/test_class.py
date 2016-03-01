@@ -153,16 +153,16 @@ class TestSet():
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
                     except Exception as e:
-                        logger.error("[-] Exception in test [ {} ]: {}".
-                                     format(test_name, e))
+                        logger.exception("[-] Exception in test [ {} ]".
+                                         format(test_name, e))
 
             else:
                 try:
                     test_result = fn()
                 # catch anything that goes wrong with a test
                 except Exception as e:
-                    logger.error("[-] Exception in test [ {} ]: {}".
-                                 format(test_name, e))
+                    logger.exception("[-] Exception in test [ {} ]: {}".
+                                     format(test_name, e))
 
             # If the test actually ran...
             if test_result:
