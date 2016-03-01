@@ -9,7 +9,7 @@ try:
 
     import spwd
 except ImportError as e:
-    logger.error("[-] Error importing module: {}".format(e.message))
+    logger.error("[-] Error importing module: {}".format(e))
 
 from collections import defaultdict
 import subprocess

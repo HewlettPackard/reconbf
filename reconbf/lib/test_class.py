@@ -154,7 +154,7 @@ class TestSet():
                     # catch anything that goes wrong with a test
                     except Exception as e:
                         logger.error("[-] Exception in test [ {} ]: {}".
-                                     format(test_name, e.message))
+                                     format(test_name, e))
 
             else:
                 try:
@@ -162,7 +162,7 @@ class TestSet():
                 # catch anything that goes wrong with a test
                 except Exception as e:
                     logger.error("[-] Exception in test [ {} ]: {}".
-                                 format(test_name, e.message))
+                                 format(test_name, e))
 
             # If the test actually ran...
             if test_result:
