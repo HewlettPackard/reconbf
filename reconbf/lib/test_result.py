@@ -1,7 +1,7 @@
-from logger import logger
-import test_config
-from test_config import ConfigNotFound
-import test_constants
+from .logger import logger
+from . import test_config
+from .test_config import ConfigNotFound
+from . import test_constants
 
 import json
 

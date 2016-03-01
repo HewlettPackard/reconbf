@@ -1,6 +1,6 @@
-from logger import logger
-import test_config
-import test_constants
+from .logger import logger
+from . import test_config
+from . import test_constants
 
 from collections import defaultdict
 import glob

@@ -1,10 +1,10 @@
 # ReconBF main module and test runner
-from lib.logger import logger
-from lib.test_class import TestSet
-import lib.test_config as test_config
-import lib.test_constants as test_constants
-from lib.test_profile import TestProfile
-from lib.test_result import ResultDisplayType
+from .lib.logger import logger
+from .lib.test_class import TestSet
+from .lib import test_config as test_config
+from .lib import test_constants as test_constants
+from .lib.test_profile import TestProfile
+from .lib.test_result import ResultDisplayType
 
 import argparse
 import logging
@@ -198,12 +198,3 @@ def _parse_args():
                              "pass")
 
     return parser.parse_args()
-
-
-if __name__ == "__main__":
-    # if the script is being run directly, rebase the path one dir higher
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    sys.path.remove(current_dir)
-    sys.path.insert(0, os.path.dirname(current_dir))
-    import reconbf.rbf
-    reconbf.rbf.main()

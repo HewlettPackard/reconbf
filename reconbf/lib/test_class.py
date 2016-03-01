@@ -1,7 +1,7 @@
-from logger import logger
-import test_config
-from test_config import ConfigNotFound
-from test_result import TestResults
+from .logger import logger
+from . import test_config
+from .test_config import ConfigNotFound
+from .test_result import TestResults
 
 import glob
 import importlib
