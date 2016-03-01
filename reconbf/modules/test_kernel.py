@@ -12,7 +12,8 @@ from reconbf.lib.test_result import GroupTestResult, Result, TestResult
 
 def _kernel_version():
     """Return the kernel version information"""
-    return subprocess.check_output(['uname', '-r']).strip()
+    return subprocess.check_output(['uname', '-r']).strip().decode(
+        'utf-8', errors='replace')
 
 
 def _kconfig():

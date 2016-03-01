@@ -82,9 +82,9 @@ def test_list_sudoers():
     # ever want to change them, for now they stay here
     list_sudoer_command = ['sudo', '-U', '$USER', '-l']
 
-    not_sudo_string = 'not allowed to run sudo'
-    sudo_string = 'may run the following commands'
-    nopasswd_string = 'NOPASSWD'
+    not_sudo_string = b'not allowed to run sudo'
+    sudo_string = b'may run the following commands'
+    nopasswd_string = b'NOPASSWD'
 
     passwd_entries = pwd.getpwall()
 

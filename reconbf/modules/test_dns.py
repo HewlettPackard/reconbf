@@ -25,7 +25,9 @@ def test_dns_name():
 
     if host is not "":
         result = Result.PASS
-        notes = 'Default hostname is ' + host.replace("\n", "") + '.'
+        notes = ('Default hostname is ' +
+                 host.decode('utf-8', errors='replace').replace("\n", "") +
+                 '.')
     else:
         result = Result.FAIL
         notes = 'Hostname is empty!'

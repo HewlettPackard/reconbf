@@ -13,7 +13,7 @@ import subprocess
 
 
 def _is_elf(path):
-    return ' ELF ' in subprocess.check_output(['file', path])
+    return b' ELF ' in subprocess.check_output(['file', path])
 
 
 def _is_setuid(path):
@@ -44,9 +44,9 @@ def _check_relro(path):
     to build using the flags: $ gcc foo.c -Wl,-z,relro,-z,now.
     """
     headers = _elf_prog_headers(path)
-    if 'GNU_RELRO' in headers:
+    if b'GNU_RELRO' in headers:
         dynamic_section = _elf_dynamic(path)
-        if 'BIND_NOW' in dynamic_section:
+        if b'BIND_NOW' in dynamic_section:
             return 'full'
         else:
             return 'partial'
@@ -65,7 +65,7 @@ def _check_stack_canary(path):
     we are looking for here is the symbol __stack_chk_fail.
     """
     symbols = _elf_syms(path)
-    if '__stack_chk_fail' in symbols:
+    if b'__stack_chk_fail' in symbols:
         return True
 
     return False
@@ -79,8 +79,8 @@ def _check_nx(path):
     for things like JIT interpreters.
     """
     headers = _elf_prog_headers(path)
-    for line in headers.split('\n'):
-        if 'GNU_STACK' and 'RWE' not in line:
+    for line in headers.split(b'\n'):
+        if b'GNU_STACK' and b'RWE' not in line:
             return True
 
     return False
@@ -94,11 +94,11 @@ def _check_pie(path):
     executable as a PIE: $ gcc foo.c -fPIE -pie.
     """
     file_headers = _elf_file_headers(path)
-    for line in file_headers.split('\n'):
-        if 'Type:' in line:
-            if 'EXEC' in line:
+    for line in file_headers.split(b'\n'):
+        if b'Type:' in line:
+            if b'EXEC' in line:
                 return False
-            elif 'DYN' in line and '(DEBUG)' in _elf_dynamic(path):
+            elif b'DYN' in line and b'(DEBUG)' in _elf_dynamic(path):
                 return True
             else:
                 raise ValueError(path + ' is a DSO so PIE test is invalid')
@@ -111,7 +111,7 @@ def _check_runpath(path):
     """
 
     dyn = _elf_dynamic(path)
-    return 'rpath' in dyn or 'runpath' in dyn
+    return b'rpath' in dyn or b'runpath' in dyn
 
 
 def _check_fortify(path):
@@ -133,7 +133,7 @@ def _check_fortify(path):
 
     fortified = set([])
     for addr, sym, name in _symbols_in_elf(libc):
-        if sym == 'T' and name.endswith('_chk'):
+        if sym == b'T' and name.endswith(b'_chk'):
             fortified.add(name)
 
     symbols = set([name for addr, sym, name in _symbols_in_dynsym(path)])
@@ -151,9 +151,9 @@ def _extract_symbols(cmd):
     try:
         null = open(os.devnull, 'w')
         entries = subprocess.check_output(cmd, stderr=null)
-        for entry in entries.split('\n'):
+        for entry in entries.split(b'\n'):
             try:
-                values = entry.strip().split(' ')
+                values = entry.strip().split(b' ')
                 # handle case:
                 #                  U __sprintf_chk@@GLIBC_2.3.4
                 if len(values) == 2:
@@ -162,9 +162,9 @@ def _extract_symbols(cmd):
                 # otherwise expect:
                 # 00000000004004b0 T main
                 else:
-                    sym_addr, sym_type, sym_name = entry.split(' ')
+                    sym_addr, sym_type, sym_name = entry.split(b' ')
 
-                yield (sym_addr, sym_type, sym_name.split('@@')[0])
+                yield (sym_addr, sym_type, sym_name.split(b'@@')[0])
             except ValueError as err:
                 logger.debug('[*] Unexpected output [ {} ]'.format(
                     entry.strip()))

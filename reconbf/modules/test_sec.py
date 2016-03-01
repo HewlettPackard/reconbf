@@ -36,7 +36,7 @@ def test_shellshock(config):
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
         stdout, stderr = p.communicate()
 
-        if 'vulnerable' in stdout:
+        if b'vulnerable' in stdout:
             reason = "System is vulnerable to Shellshock/Bashbug."
             logger.info("[-] {}".format(reason))
             result = Result.FAIL
@@ -146,7 +146,7 @@ def test_certs():
         try:
             p = Popen(['openssl', 'verify', cert], stdout=PIPE, shell=False)
             stdout = p.communicate()
-            if "OK" in stdout[0]:
+            if b"OK" in stdout[0]:
                 logger.debug("[+] Certificate verification success for: {}".
                              format(cert))
                 if result is None:

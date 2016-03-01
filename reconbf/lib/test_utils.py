@@ -153,7 +153,7 @@ def is_service_running(service_name):
     service_command = ['service', service_name, 'status']
     service_running = False
 
-    run_indicator = 'Active: active (running)'
+    run_indicator = b'Active: active (running)'
 
     try:
         service_status = subprocess.check_output(service_command)

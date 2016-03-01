@@ -35,22 +35,22 @@ def test_selinux():
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
         stdout, stderr = p.communicate()
 
-        if 'sestatus: not found' in stderr:
+        if b'sestatus: not found' in stderr:
             reason = "SELinux is not installed."
             logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
-        elif 'disabled' in stdout:
+        elif b'disabled' in stdout:
             reason = "SELinux is disabled."
             logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
-        elif 'permissive' in stdout:
+        elif b'permissive' in stdout:
             reason = "SELinux is permissive (disabled but logging)."
             logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
-        elif 'enforcing' in stdout:
+        elif b'enforcing' in stdout:
             reason = "SELinux is installed and enforcing."
             logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.PASS)
@@ -100,18 +100,18 @@ def test_apparmor():
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
         stdout, stderr = p.communicate()
 
-        if 'apparmor_status: command not found' in stderr:
+        if b'apparmor_status: command not found' in stderr:
             reason = "AppArmor is not installed."
             logger.debug("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
         # enforcing check, no /'s = no directories
-        elif "//" not in stdout:
+        elif b"//" not in stdout:
             reason = "AppArmor has no modules loaded."
             logger.info("[-] {}".format(reason))
             return_result = TestResult(Result.FAIL, notes=reason)
 
-        elif "//" in stdout:
+        elif b"//" in stdout:
             reason = "AppArmor is installed and policy is loaded."
             logger.info("[+] {}".format(reason))
             return_result = TestResult(Result.PASS)

@@ -22,7 +22,7 @@ def test_NX():
     logger.debug("[*] Checking if NX (or NX emulation) is present.")
 
     output = check_output(["dmesg"])
-    if 'NX (Execute Disable) protection: active' in output:
+    if b'NX (Execute Disable) protection: active' in output:
         reason = "NX protection active in BIOS."
         logger.debug("[+] {}".format(reason))
         result = Result.PASS
@@ -60,11 +60,11 @@ def test_devmem():
         proc_config = gzip.open('/proc/config.gz', 'rb')
         kernel_cfg = proc_config.read()
 
-        if "CONFIG_STRICT_DEVMEM=y" in kernel_cfg:
+        if b"CONFIG_STRICT_DEVMEM=y" in kernel_cfg:
             reason = "/dev/mem protection is enabled."
             logger.debug("[+] {}".format(reason))
             result = Result.PASS
-        elif "CONFIG_STRICT_DEVMEM=n" in kernel_cfg:
+        elif b"CONFIG_STRICT_DEVMEM=n" in kernel_cfg:
             reason = "/dev/mem protection is not enabled."
             logger.debug("[-] {}".format(reason))
             result = Result.FAIL

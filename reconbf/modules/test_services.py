@@ -309,13 +309,14 @@ def _validate_svc_cfg_list(reqs_list):
     for config in reqs_list:
 
         # if the config check doesn't have 'name', it isn't valid, don't add
-        if 'name' not in config or not type(config['name']) == unicode:
+        if 'name' not in config or not isinstance(config['name'], type(u'')):
             logger.error("Service config requirement must have a 'name': {}".
                          format(config))
             continue
 
         # if the config check doesn't have 'config', it isn't valid, don't add
-        if 'config' not in config or not type(config['config']) == unicode:
+        if ('config' not in config or
+                not isinstance(config['config'], type(u''))):
             logger.error("Service config requirement must have a 'config': {}".
                          format(config))
             continue
