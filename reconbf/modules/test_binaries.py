@@ -7,7 +7,6 @@ from reconbf.lib.test_result import TestResult
 from reconbf.lib import test_utils as utils
 
 import os
-import platform
 import stat
 import subprocess
 
@@ -114,6 +113,34 @@ def _check_runpath(path):
     return b'rpath' in dyn or b'runpath' in dyn
 
 
+def _find_used_libc(path):
+    """Find the libc file which would be used on execution of the provided
+    binary. This is not trivial to find out from outside and needs to be
+    resolved by actual linker.
+    """
+
+    output = subprocess.check_output(['ldd', path])
+    for line in output.splitlines():
+        parts = line.split('=>')
+        if len(parts) < 2:
+            continue
+
+        libname = parts[0].strip()
+        if not libname.startswith('libc.so'):
+            continue
+
+        filename = parts[1].strip().split()[0]
+        if not os.path.exists(filename):
+            # ldd just told us it does exist, something really weird is
+            # happening - maybe there's another one?
+            continue
+
+        return filename
+
+    # libc not found for some reason
+    return None
+
+
 def _check_fortify(path):
     """Fortify Source - This introduces support for
     detecting buffer overflows in various functions that perform
@@ -122,17 +149,13 @@ def _check_fortify(path):
     an executable with fortify source enabled:
         $ gcc foo.c -D_FORTIFY_SOURCE=2 -O2
     """
-
-    libc = '/lib/libc.so.6'
-    if platform.machine() == 'x86_64':
-        libc = '/lib64/libc.so.6'
-
-    if not os.path.exists(libc):
+    libc = _find_used_libc(path)
+    if not libc:
         logger.debug('  [*] Unable to determine location of libc')
         return False
 
     fortified = set([])
-    for addr, sym, name in _symbols_in_elf(libc):
+    for addr, sym, name in _symbols_in_dynsym(libc):
         if sym == b'T' and name.endswith(b'_chk'):
             fortified.add(name)
 
@@ -171,21 +194,6 @@ def _extract_symbols(cmd):
 
     except subprocess.CalledProcessError as err:
         logger.debug(err)
-
-
-def _symbols_in_elf(path):
-    """Generator to return the symbols within an ELF executable or
-    shared library. Output taken from the 'nm' command.
-
-    *NOTE* This will note return any results for stripped binaries.
-
-    :param path: The path of the executable or shared library to extract
-                 symbols from.
-
-    :returns: Generator that yields the symbols that are either
-              defined in, or referenced by a given ELF file.
-    """
-    return _extract_symbols(['nm', path])
 
 
 def _symbols_in_dynsym(path):
