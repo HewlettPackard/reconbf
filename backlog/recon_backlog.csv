@@ -36,3 +36,4 @@ Docker critical file controls,Verifies that Docker critical files are protected 
 Docker registry certificate file controls,Verifies that the Docker registry file ownership is set to root:root,Docker,High,
 OWASP Depedency check,Run the OWASP depedency checker tool and validate results,Recon,Medium,
 CVE-Check tool,Run the CVE-Check tool and validate results,Recon,Medium,
+ELF parsing,Use python parser for valid ELF/so files so that we don't expose readelf/file in root account,Recon,High
