@@ -47,10 +47,14 @@ def _kconfig_option(option, config=None):
         return None
 
     for line in config.split('\n'):
-        if line.startswith('#') or option not in line:
+        if line.startswith('#'):
             continue
-        opt, val = line.split("=")
-        return val
+        parts = line.split("=")
+        if len(parts) != 2:
+            continue
+        opt, val = parts
+        if option == opt.strip():
+            return val.strip()
 
 
 @test_class.explanation("""
