@@ -200,18 +200,24 @@ def _extract_symbols(cmd):
         logger.debug(err)
 
 
-def _symbols_in_dynsym(path):
+def _symbols_in_dynsym(path, _cache={}):
     """Generator to return all the symbols within an ELF executable dynsym
     section. These results will only include the symbols needed for
     dynamic linking at runtime. This section will exists even when the
     binary is stripped.  Essentially this is output taken from `nm -D`
 
     :param path: The path of the executable to be examined.
+    :param _cache: Cache for results. We don't expect binaries to change
+        mid-run.
 
     :returns: Generator the yields the symbols in the .dynsym section
               of the ELF binary.
     """
-    return _extract_symbols(['nm', '-D', path])
+    result = _cache.get(path)
+    if result is None:
+        result = _extract_symbols(['nm', '-D', path])
+        _cache[path] = result
+    return result
 
 
 def _check_policy(context, policy, actual, results):
