@@ -38,4 +38,4 @@ OWASP Depedency check,Run the OWASP depedency checker tool and validate results,
 CVE-Check tool,Run the CVE-Check tool and validate results,Recon,Medium,
 ELF parsing,Use python parser for valid ELF/so files so that we don't expose readelf/file in root account,Recon,High,
 Deleted executables,Find processes with executables which don't exist anymore,Recon,Medium,
-Listening executables,Check ELF security on processes with open sockets,Recon,High,
+Listening executables,Check ELF security on processes with open sockets,Recon,High,4/6/16

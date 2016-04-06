@@ -194,6 +194,39 @@ def executables_in_path():
     return [x for x in executables if is_exec(x)]
 
 
+def listening_executables():
+    """Search for executables of all running processes which have an open
+    network socket
+
+    :returns: A list of all network executables
+    """
+
+    executables = set()
+    for pid in os.listdir('/proc'):
+        if not pid.isdigit():
+            continue
+
+        listening = False
+
+        fd_base = os.path.join('/proc', pid, 'fd')
+        for fd in os.listdir(fd_base):
+            try:
+                fd_desc = os.readlink(os.path.join(fd_base, fd))
+                if fd_desc.startswith('socket:'):
+                    listening = True
+                    break
+            except OSError:
+                # fds can disappear without warning, don't worry about it
+                continue
+
+        if listening:
+            exe = os.readlink(os.path.join('/proc', pid, 'exe'))
+            if exe.endswith(' (deleted)'):
+                continue
+            executables.add(exe)
+    return sorted(executables)
+
+
 def config_search(filename, config_descriptor, comment_delims=['#'],
                   keyval_delim=' '):
     """Find the option value specified by config_descriptor in file specified

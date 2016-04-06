@@ -249,7 +249,7 @@ def _check_binaries(policy, filelist, predicate):
 
 @test_class.takes_config
 @test_class.explanation("""
-    Protection name: Security hardened binaries
+    Protection name: Security hardened suid binaries
 
     Check: Ensures all setuid executables on the system
     path have been built with various security hardening
@@ -270,6 +270,31 @@ def test_setuid_files(config):
     policy = setup['policy']
     predicate = lambda x: os.path.exists(x) and _is_setuid(x) and _is_elf(x)
     return _check_binaries(policy, utils.executables_in_path(), predicate)
+
+
+@test_class.takes_config
+@test_class.explanation("""
+    Protection name: Security hardened listening binaries
+
+    Check: Ensures all applications running on the system
+    have binaries which have been built with various
+    security hardening options enabled.
+
+    Purpose: Daemon applications should be built with as many
+    hardening options enabled as possible.
+    """)
+def test_listening_files(config):
+    if not utils.have_command("readelf") or not utils.have_command("nm"):
+        return TestResult(Result.SKIP, notes="readelf needed for this test")
+
+    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
+                                           requirements_id="listening")
+    if not setup:
+        return TestResult(Result.SKIP, notes="Unable to find test config")
+
+    policy = setup['policy']
+    predicate = lambda x: os.path.exists(x) and _is_elf(x)
+    return _check_binaries(policy, utils.listening_executables(), predicate)
 
 
 @test_class.takes_config
