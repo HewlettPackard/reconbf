@@ -12,7 +12,11 @@ import subprocess
 
 
 def _is_elf(path):
-    return b' ELF ' in subprocess.check_output(['file', path])
+    try:
+        header = open(path, 'rb').read(4)
+        return header == b'\x7fELF'
+    except IOError:
+        return False
 
 
 def _is_setuid(path):
