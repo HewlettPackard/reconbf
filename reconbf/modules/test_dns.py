@@ -1,7 +1,7 @@
 import reconbf.lib.test_class as test_class
 from reconbf.lib.test_result import TestResult
 from reconbf.lib.test_result import Result
-import subprocess as s
+import socket
 
 
 @test_class.explanation(
@@ -19,11 +19,11 @@ import subprocess as s
     """)
 def test_dns_name():
     try:
-        host = s.check_output('hostname')
-    except OSError:
+        host = socket.gethostname()
+    except Exception:
         return TestResult(Result.SKIP, notes='Unable to find hostname.')
 
-    if host is not "":
+    if host:
         result = Result.PASS
         notes = ('Default hostname is ' +
                  host.decode('utf-8', errors='replace').replace("\n", "") +
