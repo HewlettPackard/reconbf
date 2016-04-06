@@ -1,4 +1,5 @@
 from lib.logger import logger
+import os
 import subprocess
 import lib.test_class as test_class
 from lib.test_result import Result, GroupTestResult, TestResult
@@ -486,7 +487,7 @@ def test_docker_daemon():
     logger.debug("[*] Checking auditing on the Docker daemon.")
     note = "Test is invalid for newer kernels."
 
-    kernel = subprocess.check_output(['uname', '-r']).split('.')
+    kernel = os.uname()[2].split('.')
     major_version = kernel[0]
     minor_version = int(kernel[1])
     if "3" in major_version:

@@ -318,8 +318,9 @@ def get_flavor():
 
 def kernel_version():
     """Return the kernel version information"""
-    return subprocess.check_output(['uname', '-r']).strip().decode(
-        'utf-8', errors='replace')
+
+    # equivalent to `uname -r`
+    return os.uname()[2]
 
 
 def kconfig():
