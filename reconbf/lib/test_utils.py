@@ -4,6 +4,7 @@ from . import test_constants
 
 from collections import defaultdict
 import glob
+import gzip
 import os
 import subprocess
 
@@ -313,3 +314,49 @@ def get_flavor():
         return 'DEB'
     elif 'RedHat' in item[0] or 'CentOS' in item[0]:
         return 'RH'
+
+
+def kernel_version():
+    """Return the kernel version information"""
+    return subprocess.check_output(['uname', '-r']).strip().decode(
+        'utf-8', errors='replace')
+
+
+def kconfig():
+    """ Return the contents of the kernel configuration"""
+    paths = [
+        '/proc/config.gz',
+        '/boot/config-{}'.format(kernel_version()),
+        '{}/.config'.format(os.getenv('KCONFIG_BUILD', '/usr/src/linux'))
+    ]
+
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                proc_config = gzip.open(path, 'r')
+                return proc_config.read()
+
+            except IOError:
+                return open(path).read()
+
+
+def kconfig_option(option, config=None):
+    """Return the value of a kernel configuration option or None
+    if it isn't set
+    """
+    if not config:
+        config = kconfig()
+
+    if not config:
+        logger.info("[-] Unable to find kernel config!")
+        return None
+
+    for line in config.split('\n'):
+        if line.startswith('#'):
+            continue
+        parts = line.split("=")
+        if len(parts) != 2:
+            continue
+        opt, val = parts
+        if option == opt.strip():
+            return val.strip()

@@ -2,59 +2,11 @@ import ctypes
 import errno
 import os
 import pwd
-import subprocess
 from multiprocessing import Process, Value
 
-from reconbf.lib.logger import logger
 from reconbf.lib import test_class
+from reconbf.lib import test_utils
 from reconbf.lib.test_result import GroupTestResult, Result, TestResult
-
-
-def _kernel_version():
-    """Return the kernel version information"""
-    return subprocess.check_output(['uname', '-r']).strip().decode(
-        'utf-8', errors='replace')
-
-
-def _kconfig():
-    """ Return the contents of the kernel configuration"""
-    paths = [
-        '/proc/config.gz',
-        '/boot/config-{}'.format(_kernel_version()),
-        '{}/.config'.format(os.getenv('KCONFIG_BUILD', '/usr/src/linux'))
-    ]
-
-    for path in paths:
-        if os.path.exists(path):
-            try:
-                null = open(os.devnull, 'w')
-                cmd = ['zcat', '-q', path]
-                return subprocess.check_output(cmd, stderr=null)
-
-            except subprocess.CalledProcessError:
-                return open(path).read()
-
-
-def _kconfig_option(option, config=None):
-    """Return the value of a kernel configuration option or None
-    if it isn't set
-    """
-    if not config:
-        config = _kconfig()
-
-    if not config:
-        logger.info("[-] Unable to find kernel config!")
-        return None
-
-    for line in config.split('\n'):
-        if line.startswith('#'):
-            continue
-        parts = line.split("=")
-        if len(parts) != 2:
-            continue
-        opt, val = parts
-        if option == opt.strip():
-            return val.strip()
 
 
 @test_class.explanation("""
@@ -131,17 +83,17 @@ def test_pax():
         "Bounds check heap object copies":      "CONFIG_PAX_USERCOPY",
     }
 
-    config = _kconfig()
+    config = test_utils.kconfig()
     if not config:
         return TestResult(Result.SKIP, notes="Unable to find kernel config")
 
-    if not _kconfig_option('CONFIG_GRKERNSEC', config):
+    if not test_utils.kconfig_option('CONFIG_GRKERNSEC', config):
         return TestResult(Result.FAIL,
                           notes="Kernel not compiled with GRSECURITY patches")
 
     results = GroupTestResult()
     for test, setting in pax_kernel_options.items():
-        enabled = _kconfig_option(setting, config)
+        enabled = test_utils.kconfig_option(setting, config)
         if enabled and enabled == 'y':
             results.add_result(test, TestResult(Result.PASS))
         else:
@@ -265,7 +217,8 @@ def test_proc_map_access():
     """)
 def test_ptrace_scope():
     ptrace_scope = '/proc/sys/kernel/yama/ptrace_scope'
-    kernel_compiled_with_yama = _kconfig_option("CONFIG_SECURITY_YAMA")
+    kernel_compiled_with_yama = test_utils.kconfig_option(
+        "CONFIG_SECURITY_YAMA")
     if not kernel_compiled_with_yama:
         return TestResult(Result.FAIL,
                           notes="Kernel missing CONFIG_SECURITY_YAMA")

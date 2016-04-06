@@ -2,8 +2,8 @@ from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
 from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
+from reconbf.lib import test_utils
 
-import gzip
 from subprocess import check_output
 
 
@@ -55,19 +55,21 @@ def test_devmem():
     logger.debug("[*] Attempting to validate /dev/mem protection.")
     result = Result.FAIL  # set fail by default?
 
-    # check /proc/config.gz - CONFIG_STRICT_DEVMEM=y
+    # check kernel config - CONFIG_STRICT_DEVMEM=y
     try:
-        proc_config = gzip.open('/proc/config.gz', 'rb')
-        kernel_cfg = proc_config.read()
+        devmem_val = test_utils.kconfig_option('CONFIG_STRICT_DEVMEM')
 
-        if b"CONFIG_STRICT_DEVMEM=y" in kernel_cfg:
+        if devmem_val == 'y':
             reason = "/dev/mem protection is enabled."
             logger.debug("[+] {}".format(reason))
             result = Result.PASS
-        elif b"CONFIG_STRICT_DEVMEM=n" in kernel_cfg:
+        elif devmem_val == 'n':
             reason = "/dev/mem protection is not enabled."
             logger.debug("[-] {}".format(reason))
             result = Result.FAIL
+        else:
+            result = Result.SKIP
+            reason = "Cannot find the kernel config or option"
 
     except IOError as e:
         reason = "Error opening /proc/config.gz."
