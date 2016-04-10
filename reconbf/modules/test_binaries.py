@@ -6,9 +6,15 @@ from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
 from reconbf.lib import test_utils as utils
 
+import multiprocessing
 import os
+import pwd
 import stat
 import subprocess
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 
 
 def _is_elf(path):
@@ -25,20 +31,55 @@ def _is_setuid(path):
             os.stat(path).st_mode & stat.S_ISUID == stat.S_ISUID)
 
 
+def _safe_child(to_exec, q, uid, gid):
+    try:
+        os.setgroups([])
+        os.setregid(gid, gid)
+        os.setreuid(uid, uid)
+
+        res = subprocess.check_output(to_exec, stderr=open(os.devnull, 'w'))
+        q.put(res)
+    except Exception as e:
+        q.put(e)
+
+
+def _safe_exec(to_exec, user="nobody"):
+    pwentry = pwd.getpwnam(user)
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_safe_child,
+        args=(to_exec, q, pwentry.pw_uid, pwentry.pw_gid))
+    p.start()
+    try:
+        res = q.get(True, 5)
+        p.join(1)
+    except queue.Empty:
+        p.terminate()
+        raise Exception("Failed to execute command %s" % to_exec)
+    except:
+        p.terminate()
+        raise
+
+    if isinstance(res, Exception):
+        raise res  # forward child exception
+    else:
+        return res
+
+
 def _elf_syms(path):
-    return subprocess.check_output(['readelf', '-s', path])
+    return _safe_exec(['readelf', '-s', path])
 
 
 def _elf_dynamic(path):
-    return subprocess.check_output(['readelf', '-d', path])
+    return _safe_exec(['readelf', '-d', path])
 
 
 def _elf_prog_headers(path):
-    return subprocess.check_output(['readelf', '-W', '-l', path])
+    return _safe_exec(['readelf', '-W', '-l', path])
 
 
 def _elf_file_headers(path):
-    return subprocess.check_output(['readelf', '-h', path])
+    return _safe_exec(['readelf', '-h', path])
 
 
 def _check_relro(path):
@@ -123,14 +164,14 @@ def _find_used_libc(path):
     resolved by actual linker.
     """
 
-    output = subprocess.check_output(['ldd', path])
+    output = _safe_exec(['ldd', path])
     for line in output.splitlines():
-        parts = line.split('=>')
+        parts = line.split(b'=>')
         if len(parts) < 2:
             continue
 
         libname = parts[0].strip()
-        if not libname.startswith('libc.so'):
+        if not libname.startswith(b'libc.so'):
             continue
 
         filename = parts[1].strip().split()[0]
@@ -176,8 +217,7 @@ def _extract_symbols(cmd):
     :returns: Generated symbols resulting from nm invocation.
     """
     try:
-        null = open(os.devnull, 'w')
-        entries = subprocess.check_output(cmd, stderr=null)
+        entries = _safe_exec(cmd)
         for entry in entries.split(b'\n'):
             try:
                 values = entry.strip().split(b' ')
