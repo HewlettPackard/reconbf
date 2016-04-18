@@ -1,14 +1,40 @@
 import os
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-import reconbf.lib.test_config as test_config
 from reconbf.lib.test_result import GroupTestResult
 from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
 import reconbf.lib.test_utils as test_utils
 
 
-@test_class.takes_config
+def _conf_test_running_services():
+    return [{"name": "Running firewall service",
+             "services": ["iptables", "ufw"],
+             "expected": "on",
+             "match": "one",
+             "fail": "True"},
+
+            {"name": "Not running unencrypted services",
+             "services": ["ftp", "telnetd", "vsftpd"],
+             "expected": "off",
+             "match": "all",
+             "fail": "True"},
+
+            {"name": "Not running legacy remote utilities",
+             "services": ["rsh", "rlogin", "rexec", "rcp"],
+             "expected": "off",
+             "match": "all",
+             "fail": "True"},
+
+            {"name": "Not running mail servers",
+             "services": ["sendmail", "exim", "postfix", "qmail"],
+             "expected": "off",
+             "match": "all",
+             "fail": "True"},
+            ]
+
+
+@test_class.takes_config(_conf_test_running_services)
 @test_class.explanation(
     """
     Protection name: Running services
@@ -25,17 +51,8 @@ import reconbf.lib.test_utils as test_utils
     credentials unencrypted.  This provides attackers with a path to gain
     access to the system.
     """)
-def test_running_services(config):
+def test_running_services(service_reqs):
     results = GroupTestResult()
-
-    try:
-        config_file = config['config_file']
-    except KeyError:
-        logger.error("[-] Can't find definition for 'config_file' in module's "
-                     "settings, skipping test")
-        return TestResult(Result.SKIP, "No proper config file defined")
-
-    service_reqs = test_config.get_reqs_from_file(config_file)
 
     if not service_reqs:
         return TestResult(Result.SKIP, "Unable to load module config file")
@@ -57,7 +74,18 @@ def test_running_services(config):
     return results
 
 
-@test_class.takes_config
+def _conf_test_service_config():
+    return [{
+        "name": "Secure SSH config",
+        "config": "/etc/ssh/sshd_config",
+        "Protocol": {"allowed": ["2"]},
+        "PasswordAuthentication": {"allowed": ["no"]},
+        "PermitRootLogin": {"allowed": ["no"]},
+        "ChallengeResponseAuthentication": {"disallowed": ["yes"]}
+        }]
+
+
+@test_class.takes_config(_conf_test_service_config)
 @test_class.explanation(
     """
     Protection name: Secure service configurations
@@ -71,23 +99,13 @@ def test_running_services(config):
     permit direct login to root.  Other configurations of SSH are less secure,
     and the purpose of this test is to detect insecure settings.
     """)
-def test_service_config(config):
+def test_service_config(svccfg_reqs):
     results = GroupTestResult()
-
-    try:
-        config_file = config['config_file']
-    except KeyError:
-        logger.error("[-] Can't find definition for 'config_file' in module's "
-                     "settings, skipping test")
-        return TestResult(Result.SKIP, "No proper config file defined")
-
-    svccfg_reqs = test_config.get_reqs_from_file(config_file)
 
     if not svccfg_reqs:
         return TestResult(Result.SKIP, "Unable to load module config file")
 
     else:
-
         svccfg_reqs = _validate_svc_cfg_list(svccfg_reqs)
 
         for req in svccfg_reqs:

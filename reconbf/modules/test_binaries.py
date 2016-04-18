@@ -1,6 +1,5 @@
 from reconbf.lib.logger import logger
 from reconbf.lib import test_class
-from reconbf.lib import test_config as test_config
 from reconbf.lib.test_result import GroupTestResult
 from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
@@ -293,7 +292,17 @@ def _check_binaries(policy, filelist, predicate):
     return results
 
 
-@test_class.takes_config
+def _conf_test_setuid_files():
+    return {"relro": "full",
+            "stack_canary": True,
+            "nx": True,
+            "pie": True,
+            "runpath": False,
+            "fortify": True
+            }
+
+
+@test_class.takes_config(_conf_test_setuid_files)
 @test_class.explanation("""
     Protection name: Security hardened suid binaries
 
@@ -304,21 +313,28 @@ def _check_binaries(policy, filelist, predicate):
     Purpose: Setuid binaries should be built with as many
     hardening options enabled as possible.
     """)
-def test_setuid_files(config):
+def test_setuid_files(policy):
     if not utils.have_command("readelf") or not utils.have_command("nm"):
         return TestResult(Result.SKIP, notes="readelf needed for this test")
 
-    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
-                                           requirements_id="setuid")
-    if not setup:
+    if not policy:
         return TestResult(Result.SKIP, notes="Unable to find test config")
 
-    policy = setup['policy']
     predicate = lambda x: os.path.exists(x) and _is_setuid(x) and _is_elf(x)
     return _check_binaries(policy, utils.executables_in_path(), predicate)
 
 
-@test_class.takes_config
+def _conf_test_listening_files():
+    return {"relro": "full",
+            "stack_canary": True,
+            "nx": True,
+            "pie": True,
+            "runpath": False,
+            "fortify": True
+            }
+
+
+@test_class.takes_config(_conf_test_listening_files)
 @test_class.explanation("""
     Protection name: Security hardened listening binaries
 
@@ -329,21 +345,35 @@ def test_setuid_files(config):
     Purpose: Daemon applications should be built with as many
     hardening options enabled as possible.
     """)
-def test_listening_files(config):
+def test_listening_files(policy):
     if not utils.have_command("readelf") or not utils.have_command("nm"):
         return TestResult(Result.SKIP, notes="readelf needed for this test")
 
-    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
-                                           requirements_id="listening")
-    if not setup:
+    if not policy:
         return TestResult(Result.SKIP, notes="Unable to find test config")
 
-    policy = setup['policy']
     predicate = lambda x: os.path.exists(x) and _is_elf(x)
     return _check_binaries(policy, utils.listening_executables(), predicate)
 
 
-@test_class.takes_config
+def _conf_test_system_critical():
+    return {
+        "policy": {
+            "relro": "full",
+            "stack_canary": True,
+            "nx": True,
+            "pie": True,
+            "runpath": False,
+            "fortify": True
+        },
+        "paths": [
+            "/usr/sbin/httpd",
+            "/usr/sbin/sshd"
+        ]
+    }
+
+
+@test_class.takes_config(_conf_test_system_critical)
 @test_class.explanation("""
     Protection name: Security hardened binaries
 
@@ -358,10 +388,7 @@ def test_listening_files(config):
     Non-Executable Stack, Fortify Source, and without a
     hard coded Run Path.
     """)
-def test_system_critical(config):
-
-    setup = test_config.get_reqs_from_file('hardened_binaries.cfg',
-                                           requirements_id="system_critical")
+def test_system_critical(setup):
     if not setup:
         return TestResult(Result.SKIP, notes="Unable to find test config")
 

@@ -1,7 +1,6 @@
 import os
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-import reconbf.lib.test_config as test_config
 from reconbf.lib.test_result import GroupTestResult
 from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
@@ -11,7 +10,111 @@ from grp import getgrgid
 from pwd import getpwuid
 
 
-@test_class.takes_config
+def _conf_test_perms_and_ownership():
+    return [{"file": "/etc/inittab",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/etc/security/console.perms",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/etc/sysctl.conf",
+             "disallowed_perms": "x,wx,wx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/bash.bashrc",
+             "disallowed_perms": "x,wx,wx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/securetty",
+             "disallowed_perms": "x,rwx,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/sudoers",
+             "disallowed_perms": "wx,wx,rwx"},
+            {"file": "/etc/rsyslog.conf",
+             "disallowed_perms": "x,wx,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/crontab",
+             "disallowed_perms": "x,rwx,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/fstab",
+             "disallowed_perms": "x,wx,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/dpkg",
+             "disallowed_perms": ",w,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/security/access.conf",
+             "disallowed_perms": "x,wx,rwx",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/shadow",
+             "disallowed_perms": "x,wx,rwx",
+             "owner": "root"},
+            {"file": "/etc/passwd",
+             "disallowed_perms": "x,wx,wx"},
+            {"file": "/etc/group",
+             "disallowed_perms": "x,wx,wx"},
+            {"file": "/root",
+             "disallowed_perms": ",rwx,rwx"},
+            {"file": "/var/log/auth.log",
+             "disallowed_perms": "x,wx,rwx"},
+            {"file": "/var/log/dmesg",
+             "disallowed_perms": "x,wx,rwx"},
+            {"file": "/var/log/wtmp",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/var/log/lastlog",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/var/spool/cron",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/var/spool/cron/root",
+             "disallowed_perms": "x,rwx,rwx"},
+            {"file": "/etc/gshadow",
+             "disallowed_perms": "x,wx,rwx",
+             "owner": "root"},
+            {"file": "/boot/grub/grub.cfg",
+             "disallowed_perms": "x,wx,wx"},
+            {"file": "/lib",
+             "disallowed_perms": ",w,w"},
+            {"file": "/lib64",
+             "disallowed_perms": ",w,w"},
+            {"file": "/usr/lib",
+             "disallowed_perms": ",w,w"},
+            {"file": "/usr/lib64",
+             "disallowed_perms": ",w,w"},
+            {"file": "/etc/rc0.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc1.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc2.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc3.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc4.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc5.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"},
+            {"file": "/etc/rc6.d",
+             "disallowed_perms": ",w,w",
+             "owner": "root",
+             "group": "root"}
+            ]
+
+
+@test_class.takes_config(_conf_test_perms_and_ownership)
 @test_class.explanation(
     """
     Protection name: Restrictive file system controls
@@ -35,18 +138,9 @@ from pwd import getpwuid
     permissions are found the test fails and displays the extra permissions
     found.
     """)
-def test_perms_and_ownership(config):
+def test_perms_and_ownership(file_reqs):
 
     results = GroupTestResult()
-
-    try:
-        config_file = config['config_file']
-    except KeyError:
-        logger.error("[-] Can't find definition for 'config_file' in module's "
-                     "settings, skipping test")
-        return TestResult(Result.SKIP, 'Config missing module config file')
-    else:
-        file_reqs = test_config.get_reqs_from_file(config_file)
 
     if not file_reqs:
         return TestResult(Result.SKIP, 'Unable to load module config file')
@@ -97,7 +191,20 @@ def test_perms_and_ownership(config):
     return results
 
 
-@test_class.takes_config
+def _conf_test_perms_files_in_dir():
+    return [{"directory": "/root",
+             "dir_disallowed_perms": ",,rwx",
+             "file_disallowed_perms": ",,rwx",
+             "owner": "root"},
+            {"directory": "/usr/sbin",
+             "dir_disallowed_perms": ",,w",
+             "file_disallowed_perms": ",,w"},
+            {"directory": "/etc/init.d",
+             "file_disallowed_perms": ",,w"}
+            ]
+
+
+@test_class.takes_config(_conf_test_perms_files_in_dir)
 @test_class.explanation(
     """
     Protection name: Permissions on direcories and files
@@ -112,20 +219,8 @@ def test_perms_and_ownership(config):
     system.  Similarly important directories may include users' home directory,
     certificate directories, and service configuration directories.
     """)
-def test_perms_files_in_dir(config):
+def test_perms_files_in_dir(dir_list):
     results = GroupTestResult()
-
-    # get config file from rbf.cfg, and get requirements list
-    try:
-        config_file = config['config_file']
-    except KeyError:
-        logger.error("[-] Can't find definition for 'config_file' in module's "
-                     "settings, skipping test")
-        test_result = Result.SKIP
-        notes = 'Config missing module config file'
-        return TestResult(test_result, notes)
-    else:
-        dir_list = test_config.get_reqs_from_file(config_file)
 
     # if we can't find requirements in the file, skip the test
     if not dir_list:
@@ -136,7 +231,6 @@ def test_perms_files_in_dir(config):
     for dir_req in dir_list:
 
         check_name = "Checking files in: {}".format(dir_req['directory'])
-        notes = ""
 
         if 'directory' not in dir_req:
             reason = "Requirement doesn't include directory, skipping"

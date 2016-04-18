@@ -2,12 +2,12 @@ from .logger import logger
 from . import test_config
 from .test_config import ConfigNotFound
 from .test_result import TestResults
+from .. import modules
 
-import glob
 import importlib
 from inspect import getmembers
 from inspect import isfunction
-import os
+import pkgutil
 import sys
 
 """
@@ -49,75 +49,47 @@ class TestSet():
     def tests(self):
         return self._tests
 
-    def add_from_directory(self, directory, file_pat='test*.py',
-                           fn_name_pat='test_'):
-        """Adds all tests from a specified directory that match optional
-        pattern to the current test set.
-
-        :param directory: The directory to search for tests in
-        :param file_pat: (Optional) File name glob
-        :param fn_name_pat: (Optional) Indicates a file pattern which must
-        match for a module file in the directory to be loaded
-        :return: None
+    def add_known_tests(self, configured_modules):
+        """Adds all known recon tests to the test set.
         """
 
         orig_count = self.count
 
         test_list = []
 
-        # try to import each python file in the plugins directory
-        sys.path.append(os.path.dirname(directory))
-        for test_file in glob.glob1(directory, file_pat):
+        for _loader, module_name, _ispkg in pkgutil.iter_modules(
+                modules.__path__):
+            logger.debug("[+] Importing tests module: %s", module_name)
 
-            module_name = os.path.basename(test_file).split('.')[0]
-
-            # get the relative path of the modules directory we are
-            # importing, and then replace / with . to get the import name
-            rel_path = os.path.relpath(directory)
-            import_path = rel_path.replace('/', '.') + '.' + module_name
-
-            logger.debug("[+] Importing tests from file: {}".
-                         format(import_path))
+            if module_name not in configured_modules:
+                logger.debug("[-] Module not configured: %s", module_name)
+                continue
 
             # try to import the module by name
             try:
-                module = importlib.import_module(import_path)
+                module = importlib.import_module(
+                    modules.__name__ + "." + module_name)
 
             # if it fails, die
             except ImportError:
-                logger.exception("[-] Could not import test module '{}'".
-                                 format(import_path))
+                logger.exception("[-] Could not import test module '%s'",
+                                 modules.__path__)
                 sys.exit(2)
 
             # otherwise we want to obtain a list of all functions in the module
             # and add them to our dictionary of tests
-            else:
-                functions_list = [
-                    o for o in getmembers(module) if isfunction(o[1])
-                ]
+            for fn_name, function in getmembers(module):
+                if not isfunction(function):
+                    continue
+                if not hasattr(function, "is_recon_test"):
+                    continue
 
-                for cur_func in functions_list:
-                    # name of function is first element, function is second
-                    fn_name = cur_func[0]
-
-                    # only load functions that match the name pattern, this is
-                    # to prevent loading decorators and utility functions
-                    if str(fn_name).startswith(fn_name_pat):
-                        try:
-                            function = getattr(module, fn_name)
-                        except AttributeError:
-                            # we really shouldn't get here... just to be safe
-                            logger.error("[-] Could not locate test function "
-                                         "'{}' in module '{}.{}'".
-                                         format(fn_name, directory,
-                                                module_name))
-                            sys.exit(2)
-                        else:
-                            new_test = dict()
-                            new_test['name'] = fn_name
-                            new_test['function'] = function
-                            new_test['module'] = module_name
-                            test_list.append(new_test)
+                new_test = {
+                    'name': fn_name,
+                    'function': function,
+                    'module': module_name,
+                    }
+                test_list.append(new_test)
 
         self._tests += _sort_tests(test_list, SortType.MODULE_ALPHABETIC)
 
@@ -149,6 +121,10 @@ class TestSet():
                                  "not be found.  Skipping...".
                                  format(test_name))
                 else:
+                    # if the config is not available, use defaults
+                    if conf is None and fn.config_generator is not None:
+                        conf = fn.config_generator()
+
                     try:
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
@@ -257,19 +233,24 @@ def explanation(exp):
     """
     def decorate(f):
         f.explanation = exp
+        f.is_recon_test = True
         return f
     return decorate
 
 
-def takes_config(func):
+def takes_config(conf_gen_func=None):
     """Decorator to indicate that function takes a config dictionary
 
     Example:
-        @takes_config
+        @takes_config(config_generator)
         def test_xyz(self):
 
     :returns: Function which contains the has "takes_config" attribute
     """
-    # Just having the attribute indicates that it takes config, no value needed
-    func.takes_config = None
-    return func
+    def decorate(func):
+        # Just having the attribute indicates that it takes config, no value
+        # needed
+        func.takes_config = None
+        func.config_generator = conf_gen_func
+        return func
+    return decorate

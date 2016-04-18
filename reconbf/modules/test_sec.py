@@ -1,6 +1,5 @@
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-import reconbf.lib.test_config as test_config
 from reconbf.lib.test_result import GroupTestResult
 from reconbf.lib.test_result import Result
 from reconbf.lib.test_result import TestResult
@@ -11,7 +10,13 @@ from subprocess import PIPE
 from subprocess import Popen
 
 
-@test_class.takes_config
+def _conf_test_shellshock():
+    return {"exploit_command":
+            "env X='() { :;}; echo vulnerable' bash -c 'echo this is a test'"
+            }
+
+
+@test_class.takes_config(_conf_test_shellshock)
 @test_class.explanation(
     """
     Protection name: Bash not vulnerable to shellshock
@@ -47,7 +52,71 @@ def test_shellshock(config):
         return TestResult(result, reason)
 
 
-@test_class.takes_config
+def _conf_test_sysctl_values():
+    return [{"name": "TCP Syncookie protection",
+             "key": "net/ipv4/tcp_syncookies",
+             "allowed_values": "1"},
+
+            {"key": "net/ipv4/tcp_max_syn_backlog",
+             "allowed_values": "4096"},
+
+            {"key": "net/ipv4/conf/all/rp_filter",
+             "allowed_values": "1"},
+
+            {"key": "net/ipv4/conf/all/accept_source_route",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/all/accept_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/all/secure_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/default/accept_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/default/secure_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/all/send_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/default/send_redirects",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/icmp_echo_ignore_broadcasts",
+             "allowed_values": "1"},
+
+            {"key": "net/ipv4/icmp_ignore_bogus_error_responses",
+             "allowed_values": "1"},
+
+            {"key": "net/ipv4/ip_forward",
+             "allowed_values": "0"},
+
+            {"key": "net/ipv4/conf/all/log_martians",
+             "allowed_values": "1"},
+
+            {"key": "net/ipv4/conf/default/rp_filter",
+             "allowed_values": "1"},
+
+            {"key": "vm/swappiness",
+             "allowed_values": "0"},
+
+            {"key": "vm/mmap_min_addr",
+             "allowed_values": "4096, 8192, 16384, 32768, 65536, 131072"},
+
+            {"key": "kernel/core_pattern",
+             "allowed_values": "core"},
+
+            {"key": "kernel/randomize_va_space",
+             "allowed_values": "2"},
+
+            {"key": "kernel/exec-shield",
+                    "allowed_values": "1"}
+            ]
+
+
+@test_class.takes_config(_conf_test_sysctl_values)
 @test_class.explanation(
     """
     Protection name: Sysctl settings set securely
@@ -59,17 +128,9 @@ def test_shellshock(config):
     parameters can be used to tune and harden the security of a system. This
     check verifies that secure values have been used where applicable.
     """)
-def test_sysctl_values(config):
+def test_sysctl_values(sysctl_reqs):
     results = GroupTestResult()
 
-    try:
-        config_file = config['config_file']
-    except KeyError:
-        logger.error("[-] Can't find definition for 'config_file' in module's "
-                     "settings, skipping test")
-        return TestResult(Result.SKIP, "No proper config file defined")
-
-    sysctl_reqs = test_config.get_reqs_from_file(config_file)
     if not sysctl_reqs:
         return TestResult(Result.SKIP, "Unable to load module config file")
 

@@ -42,17 +42,16 @@ def get_stats_on_file(file_name):
     :param file_name: The filename to get stat for
     :returns: an os.stat return value
     """
-    logger.debug("[*] Retrieving permission for file [ {} ] ".
-                 format(file_name))
+    logger.debug("[*] Retrieving permission for file [ %s ] ", file_name)
 
     return_value = None
     try:
         return_value = os.stat(file_name)
     except OSError:
-        logger.info("[*] Stat for [ {} ] failed".format(file_name))
+        logger.info("[*] Stat for [ %s ] failed", file_name)
     else:
-        logger.debug("[+] Permissions: {} found for [ {} ]".
-                     format(return_value, file_name))
+        logger.debug("[+] Permissions: %s found for [ %s ]", return_value,
+                     file_name)
     return return_value
 
 

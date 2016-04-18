@@ -3,7 +3,6 @@ from .lib.logger import logger
 from .lib.test_class import TestSet
 from .lib import test_config as test_config
 from .lib import test_constants as test_constants
-from .lib.test_profile import TestProfile
 from .lib.test_result import ResultDisplayType
 
 import argparse
@@ -14,55 +13,22 @@ import sys
 
 def main():
     args = _parse_args()
-    profile = None
 
     log_level = _log_level_from_arg(args.level)
     _init_logger(level=log_level)
 
     _check_root()
 
-    # if a profile was passed, set it up
-    if args.profile_dir:
-        profile = TestProfile(args.profile_dir)
-
-        if not profile.is_valid():
-            logger.error("[-] Problem(s) with specified profile: [ {} "
-                         "]".format(args.profile_dir))
-            sys.exit(2)
-        else:
-            logger.info("[+] Found profile: {}".format(args.profile_dir))
-
-    # prefer: 1) profile config file   2) cmd line config file  3) default
-    if profile:
-        test_config.config = test_config.Config(profile.rbf_cfg)
-        test_config.config.set_profile_config_path(profile.config_dir)
-    elif args.config_file:
+    # prefer: 1) cmd line config file  2) default
+    if args.config_file:
         test_config.config = test_config.Config(args.config_file)
     else:
         test_config.config = test_config.Config('config/rbf.cfg')
 
     test_set = TestSet()
-    added = test_set.add_from_directory(test_constants.test_dir)
+    added = test_set.add_known_tests(
+        test_config.config.get_configured_modules())
     logger.info("[+] Loaded [ {} ] tests".format(added))
-    # if we are using a profile, load modules from it as well
-    if profile:
-        added = test_set.add_from_directory(profile.modules_dir)
-        logger.info("[+] Loaded [ {} ] tests from profile".format(added))
-
-    if args.script_file:
-        found_script = False
-        # if a profile exists, try to find the script from its scripts dir
-        if profile:
-            if test_set.set_script(profile.scripts_dir + '/' +
-                                   args.script_file):
-                logger.info("[+] Using script [ {} ] from profile".format(
-                    args.script_file))
-                found_script = True
-
-        # if a script wasn't found in the profile, use one from base directory
-        if not found_script:
-            test_set.set_script(args.script_file)
-    logger.info("[+] Selected [ {} ] tests".format(test_set.count))
 
     results = test_set.run()
     display_mode = _get_display_type(args.display_mode)
@@ -72,7 +38,7 @@ def main():
     # If a report was selected, generate it
     if args.report_type is not 'none':
         _output_report(results, args.report_type, args.report_file,
-                       display_mode=display_mode, profile=profile)
+                       display_mode=display_mode)
 
     if results.had_failures:
         sys.exit(1)
@@ -129,8 +95,7 @@ def _init_logger(level):
     global_logger.addHandler(handler)
 
 
-def _output_report(results, report_type, report_file, display_mode=None,
-                   profile=None):
+def _output_report(results, report_type, report_file, display_mode=None):
     if report_type == 'csv':
         results.write_csv(report_file)
     elif report_type == 'json':
@@ -144,10 +109,7 @@ def _output_report(results, report_type, report_file, display_mode=None,
                          "config")
             sys.exit(2)
         else:
-            if profile:
-                templates_dir = profile.templates_dir
-            else:
-                templates_dir = 'templates'
+            templates_dir = 'templates'
 
             html_template = templates_dir + '/' + html_template
             logger.info("[+] Using template from {}".format(html_template))
@@ -162,16 +124,9 @@ def _parse_args():
     parser = argparse.ArgumentParser(
         description='ReconBF - a Python OS security feature tester')
 
-    parser.add_argument('-p', '--profile', dest='profile_dir', action='store',
-                        default=None, type=str, help='use specified profile')
-
     parser.add_argument('-c', '--config', dest='config_file', action='store',
                         default=None, type=str, help='use specified config '
                                                      'file instead of default')
-
-    parser.add_argument('-s', '--script', dest='script_file', action='store',
-                        default=None, type=str, help='run tests from a script '
-                                                     'file')
 
     parser.add_argument('-l' '--level', dest='level', action='store',
                         choices=['debug', 'info', 'error'], default='info',
