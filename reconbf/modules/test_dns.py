@@ -1,6 +1,6 @@
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import TestResult
-from reconbf.lib.test_result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib.result import Result
 import socket
 
 

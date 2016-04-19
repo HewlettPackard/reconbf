@@ -1,9 +1,9 @@
 # ReconBF main module and test runner
 from .lib.logger import logger
 from .lib.test_class import TestSet
-from .lib import test_config as test_config
+from .lib import config
 from .lib import test_constants as test_constants
-from .lib.test_result import ResultDisplayType
+from .lib.result import ResultDisplayType
 
 import argparse
 import logging
@@ -21,13 +21,13 @@ def main():
 
     # prefer: 1) cmd line config file  2) default
     if args.config_file:
-        test_config.config = test_config.Config(args.config_file)
+        config.config = config.Config(args.config_file)
     else:
-        test_config.config = test_config.Config('config/rbf.cfg')
+        config.config = config.Config('config/rbf.cfg')
 
     test_set = TestSet()
     added = test_set.add_known_tests(
-        test_config.config.get_configured_modules())
+        config.get_configured_modules())
     logger.info("[+] Loaded [ {} ] tests".format(added))
 
     results = test_set.run()
@@ -101,7 +101,6 @@ def _output_report(results, report_type, report_file, display_mode=None):
     elif report_type == 'json':
         results.write_json(report_file)
     elif report_type == 'html':
-        config = test_config.config
         try:
             html_template = config.get_config('html_template')
         except KeyError:

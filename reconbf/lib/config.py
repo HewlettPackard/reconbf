@@ -72,3 +72,11 @@ class Config:
 
     def get_configured_modules(self):
         return list(self._config.get('modules', {}).keys())
+
+
+def get_config(config_path):
+    return config.get_config(config_path)
+
+
+def get_configured_modules():
+    return config.get_configured_modules()

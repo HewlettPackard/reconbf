@@ -1,8 +1,8 @@
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
-from reconbf.lib import test_utils
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 from subprocess import check_output
 
@@ -57,7 +57,7 @@ def test_devmem():
 
     # check kernel config - CONFIG_STRICT_DEVMEM=y
     try:
-        devmem_val = test_utils.kconfig_option('CONFIG_STRICT_DEVMEM')
+        devmem_val = utils.kconfig_option('CONFIG_STRICT_DEVMEM')
 
         if devmem_val == 'y':
             reason = "/dev/mem protection is enabled."

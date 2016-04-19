@@ -5,8 +5,8 @@ import pwd
 from multiprocessing import Process, Value
 
 from reconbf.lib import test_class
-from reconbf.lib import test_utils
-from reconbf.lib.test_result import GroupTestResult, Result, TestResult
+from reconbf.lib import utils
+from reconbf.lib.result import GroupTestResult, Result, TestResult
 
 
 @test_class.explanation("""
@@ -83,17 +83,17 @@ def test_pax():
         "Bounds check heap object copies":      "CONFIG_PAX_USERCOPY",
     }
 
-    config = test_utils.kconfig()
+    config = utils.kconfig()
     if not config:
         return TestResult(Result.SKIP, notes="Unable to find kernel config")
 
-    if not test_utils.kconfig_option('CONFIG_GRKERNSEC', config):
+    if not utils.kconfig_option('CONFIG_GRKERNSEC', config):
         return TestResult(Result.FAIL,
                           notes="Kernel not compiled with GRSECURITY patches")
 
     results = GroupTestResult()
     for test, setting in pax_kernel_options.items():
-        enabled = test_utils.kconfig_option(setting, config)
+        enabled = utils.kconfig_option(setting, config)
         if enabled and enabled == 'y':
             results.add_result(test, TestResult(Result.PASS))
         else:
@@ -217,7 +217,7 @@ def test_proc_map_access():
     """)
 def test_ptrace_scope():
     ptrace_scope = '/proc/sys/kernel/yama/ptrace_scope'
-    kernel_compiled_with_yama = test_utils.kconfig_option(
+    kernel_compiled_with_yama = utils.kconfig_option(
         "CONFIG_SECURITY_YAMA")
     if not kernel_compiled_with_yama:
         return TestResult(Result.FAIL,

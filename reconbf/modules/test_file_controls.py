@@ -1,10 +1,10 @@
 import os
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import GroupTestResult
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
-import reconbf.lib.test_utils as test_utils
+from reconbf.lib.result import GroupTestResult
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 from grp import getgrgid
 from pwd import getpwuid
@@ -153,7 +153,7 @@ def test_perms_and_ownership(file_reqs):
                 stats = None
                 continue
             else:
-                stats = test_utils.get_stats_on_file(req['file'])
+                stats = utils.get_stats_on_file(req['file'])
 
             if stats:
                 if 'disallowed_perms' in req:
@@ -238,9 +238,9 @@ def test_perms_files_in_dir(dir_list):
             results.add(check_name, cur_result)
 
         # get a list of all the files in the directory, including subdirs
-        file_list = test_utils.get_files_list_from_dir(dir_req['directory'],
-                                                       subdirs=True,
-                                                       files_only=False)
+        file_list = utils.get_files_list_from_dir(dir_req['directory'],
+                                                  subdirs=True,
+                                                  files_only=False)
 
         if not file_list:
             reason = "Directory doesn't exist or can't be read"
@@ -252,7 +252,7 @@ def test_perms_files_in_dir(dir_list):
         fail_files = []
 
         for f in file_list:
-            stats = test_utils.get_stats_on_file(f)
+            stats = utils.get_stats_on_file(f)
 
             file_req = None
             owner_req = None

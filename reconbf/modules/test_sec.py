@@ -1,10 +1,9 @@
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import GroupTestResult
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
-import reconbf.lib.test_utils as test_utils
-from reconbf.lib.test_utils import ValNotFound
+from reconbf.lib.result import GroupTestResult
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 from subprocess import PIPE
 from subprocess import Popen
@@ -152,8 +151,8 @@ def test_sysctl_values(sysctl_reqs):
                 allowed_values = val_str.split(',')
 
                 try:
-                    value = test_utils.get_sysctl_value(requirement['key'])
-                except ValNotFound:
+                    value = utils.get_sysctl_value(requirement['key'])
+                except utils.ValNotFound:
                     cur_result = Result.SKIP
                     notes = "Could not find a value for sysctl key { "
                     notes += requirement['key'] + " }"
@@ -194,8 +193,8 @@ def test_certs():
     result = None
     notes = ""
 
-    # use test_utils to get list of certificates
-    certList = test_utils.get_files_list_from_dir(certStore)
+    # use utils to get list of certificates
+    certList = utils.get_files_list_from_dir(certStore)
 
     if certList is None:
         notes = "/etc/ssl/certs is empty, please check on-system certificates."

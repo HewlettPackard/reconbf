@@ -1,5 +1,5 @@
 from .logger import logger
-from . import test_config
+from . import config
 from . import test_constants
 
 from collections import defaultdict
@@ -99,10 +99,9 @@ def get_sysctl_value(path):
     logger.debug("[*] Testing for sysctl value [ {} ] ".format(path))
 
     # load sysctl_path from config if possible, otherwise grab default
-    config = test_config.config
     try:
         sysctl_path = config.get_config("paths.sysctl_path")
-    except test_config.ConfigNotFound:
+    except config.ConfigNotFound:
         sysctl_path = test_constants.sysctl_path
 
     value = None

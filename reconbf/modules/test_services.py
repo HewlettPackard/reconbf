@@ -1,10 +1,10 @@
 import os
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import GroupTestResult
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
-import reconbf.lib.test_utils as test_utils
+from reconbf.lib.result import GroupTestResult
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 
 def _conf_test_running_services():
@@ -178,7 +178,7 @@ def _check_svc_config(req):
 
     for option in checked_options:
         try:
-            option_value = test_utils.config_search(req['config'], option)
+            option_value = utils.config_search(req['config'], option)
 
         except IOError:
             # no point keep trying to check this config file if we can't open
@@ -317,7 +317,7 @@ def _does_svc_meet_run_requirement(req):
     if req['match'] == 'all':
         passed = True
         for service in req['services']:
-            if test_utils.is_service_running(service) != expected:
+            if utils.is_service_running(service) != expected:
                 passed = False
                 reasons.append("{} not {}".format(service, req['expected']))
 
@@ -325,7 +325,7 @@ def _does_svc_meet_run_requirement(req):
     else:
         passed = False
         for service in req['services']:
-            if test_utils.is_service_running(service) == expected:
+            if utils.is_service_running(service) == expected:
                 passed = True
         if not passed:
             reasons.append("None of {} are {}".format(str(req['services']),
