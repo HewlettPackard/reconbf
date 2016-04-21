@@ -15,6 +15,9 @@ doesn't parse, we'll exit the program.
 config = None
 
 
+_no_default = object()
+
+
 class ConfigNotFound(Exception):
         pass
 
@@ -51,7 +54,7 @@ class Config:
     def config_paths(self):
         return self._config_paths
 
-    def get_config(self, config_path):
+    def get_config(self, config_path, default=_no_default):
         """Function will return a specified section of json or value
 
         :param config_path: Path in JSON document to desired bit
@@ -64,9 +67,12 @@ class Config:
             if level in cur_item:
                 cur_item = cur_item[level]
             else:
-                logger.info("[-] Unable to get config value: {}".
-                            format(config_path))
-                raise ConfigNotFound()
+                if default is _no_default:
+                    logger.info("[-] Unable to get config value: {}".
+                                format(config_path))
+                    raise ConfigNotFound()
+                else:
+                    return default
 
         return cur_item
 
@@ -74,8 +80,8 @@ class Config:
         return list(self._config.get('modules', {}).keys())
 
 
-def get_config(config_path):
-    return config.get_config(config_path)
+def get_config(config_path, default=_no_default):
+    return config.get_config(config_path, default)
 
 
 def get_configured_modules():

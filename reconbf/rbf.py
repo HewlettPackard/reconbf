@@ -139,7 +139,7 @@ def _output_report(results, report_type, report_file, display_mode=None):
     elif report_type == 'html':
         try:
             html_template = config.get_config('html_template')
-        except KeyError:
+        except config.ConfigNotFound:
             logger.error("[-] Unable to find 'html_template' setting in "
                          "config")
             sys.exit(2)

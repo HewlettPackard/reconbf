@@ -571,26 +571,17 @@ def _get_term_colors():
     # set bash colors - try from config and fallback to constants
     term_colors = {}
 
-    try:
-        term_colors['pass'] = config.get_config(
-            "output.terminal.term_color_pass")
-        term_colors['fail'] = config.get_config(
-            "output.terminal.term_color_fail")
-        term_colors['skip'] = config.get_config(
-            "output.terminal.term_color_skip")
-        term_colors['end'] = config.get_config(
-            "output.terminal.term_color_end")
-        for color in term_colors:
-            # reconstruct proper escape sequence
-            term_colors[color] = "\033[" + term_colors[color].split('[')[1]
-
-    except config.ConfigNotFound:
-        logger.info("[*] One or more terminal colors not loaded from config, "
-                    "using defaults")
-        term_colors['pass'] = constants.term_color_pass
-        term_colors['fail'] = constants.term_color_fail
-        term_colors['skip'] = constants.term_color_skip
-        term_colors['end'] = constants.term_color_end
+    term_colors['pass'] = config.get_config(
+        "output.terminal.term_color_pass", constants.term_color_pass)
+    term_colors['fail'] = config.get_config(
+        "output.terminal.term_color_fail", constants.term_color_fail)
+    term_colors['skip'] = config.get_config(
+        "output.terminal.term_color_skip", constants.term_color_skip)
+    term_colors['end'] = config.get_config(
+        "output.terminal.term_color_end", constants.term_color_end)
+    for color in term_colors:
+        # reconstruct proper escape sequence
+        term_colors[color] = "\033[" + term_colors[color].split('[')[1]
 
     return term_colors
 
