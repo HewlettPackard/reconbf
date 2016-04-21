@@ -494,15 +494,17 @@ def test_docker_daemon():
         if minor_version >= 12:
             return TestResult(Result.SKIP, note)
 
-    if subprocess.check_output(['whereis', 'auditctl']):
-        audit = subprocess.check_output(['auditctl', '-l'])
-        if '/usr/bin/docker' in audit:
-            return TestResult(Result.PASS)
-        else:
-            note = "/usr/bin/docker is not being tracked in auditctl."
-            return TestResult(Result.FAIL, note)
-    else:
+    try:
+        subprocess.check_output(['which', 'auditctl'])
+    except OSError:
         note = "The auditctl command is not installed."
+        return TestResult(Result.SKIP, note)
+
+    audit = subprocess.check_output(['auditctl', '-l'])
+    if '/usr/bin/docker' in audit:
+        return TestResult(Result.PASS)
+    else:
+        note = "/usr/bin/docker is not being tracked in auditctl."
         return TestResult(Result.FAIL, note)
 
 
