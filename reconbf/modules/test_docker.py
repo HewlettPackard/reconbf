@@ -1,9 +1,9 @@
-from lib.logger import logger
+from reconbf.lib.logger import logger
 import os
 import subprocess
-import lib.test_class as test_class
-from lib.result import Result, GroupTestResult, TestResult
-from lib import utils
+import reconbf.lib.test_class as test_class
+from reconbf.lib.result import Result, GroupTestResult, TestResult
+from reconbf.lib import utils
 
 
 def _get_docker_processes():
