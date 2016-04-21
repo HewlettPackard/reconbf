@@ -1,6 +1,6 @@
 from .logger import logger
 from . import config
-from . import test_constants
+from . import constants
 
 from collections import defaultdict
 import glob
@@ -102,7 +102,7 @@ def get_sysctl_value(path):
     try:
         sysctl_path = config.get_config("paths.sysctl_path")
     except config.ConfigNotFound:
-        sysctl_path = test_constants.sysctl_path
+        sysctl_path = constants.sysctl_path
 
     value = None
     file_path = sysctl_path + "/" + path

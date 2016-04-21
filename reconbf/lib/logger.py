@@ -1,5 +1,5 @@
 import logging
-from . import test_constants
+from . import constants
 
 # global logger
-logger = logging.getLogger(test_constants.logger_name)
+logger = logging.getLogger(constants.logger_name)

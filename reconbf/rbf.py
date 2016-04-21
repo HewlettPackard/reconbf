@@ -2,7 +2,7 @@
 from .lib.logger import logger
 from .lib.test_class import TestSet
 from .lib import config
-from .lib import test_constants as test_constants
+from .lib import constants
 from .lib.result import ResultDisplayType
 
 import argparse
@@ -121,12 +121,12 @@ def _log_level_from_arg(specified_level):
 
 
 def _init_logger(level):
-    formatter = logging.Formatter(fmt=test_constants.log_format_string)
+    formatter = logging.Formatter(fmt=constants.log_format_string)
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 
-    global_logger = logging.getLogger(test_constants.logger_name)
+    global_logger = logging.getLogger(constants.logger_name)
     global_logger.setLevel(level)
     global_logger.addHandler(handler)
 

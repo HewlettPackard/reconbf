@@ -1,6 +1,6 @@
 from .logger import logger
 from . import config
-from . import test_constants
+from . import constants
 
 import json
 
@@ -208,7 +208,7 @@ class TestResults:
                     return True
         return False
 
-    def write_csv(self, filename, separator_char=test_constants.csv_separator):
+    def write_csv(self, filename, separator_char=constants.csv_separator):
         """Create a CSV file in the specified location with an optionally
         specified separator, default: '|'
 
@@ -587,10 +587,10 @@ def _get_term_colors():
     except config.ConfigNotFound:
         logger.info("[*] One or more terminal colors not loaded from config, "
                     "using defaults")
-        term_colors['pass'] = test_constants.term_color_pass
-        term_colors['fail'] = test_constants.term_color_fail
-        term_colors['skip'] = test_constants.term_color_skip
-        term_colors['end'] = test_constants.term_color_end
+        term_colors['pass'] = constants.term_color_pass
+        term_colors['fail'] = constants.term_color_fail
+        term_colors['skip'] = constants.term_color_skip
+        term_colors['end'] = constants.term_color_end
 
     return term_colors
 
