@@ -273,8 +273,8 @@ def _check_valid_req(req):
     """
 
     # if the requirement does not contain all required fields
-    if(not req['services'] or not req['expected'] or not req['match']
-            or not req['fail']):
+    if(not req['services'] or not req['expected'] or not req['match'] or
+            not req['fail']):
         logger.error("[-] Service requirement missing required field: {}".
                      format(req))
         return None

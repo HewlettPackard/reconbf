@@ -655,8 +655,8 @@ def test_privilege_port_mapping():
             else:
                 if int(port_number) <= 1024:
                     notes = ("Container " + str(container_id) + " is running "
-                             "privileged port number - " + str(port_number)
-                             + ".")
+                             "privileged port number - " + str(port_number) +
+                             ".")
                     result = TestResult(Result.FAIL, notes)
                 elif port_number == '':
                     notes = ("Container " + str(container_id) + " does not"
