@@ -1,6 +1,6 @@
 from .logger import logger
 from . import config
-from .result import TestResults
+from .result import TestResults, TestResult, Result
 from .. import modules
 
 import importlib
@@ -139,15 +139,20 @@ class TestSet():
                     logger.exception("[-] Exception in test [ {} ]: {}".
                                      format(test_name, e))
 
+            # Name and result class are added
+            cur_result = {'name': test_name}
+
             # If the test actually ran...
             if test_result:
-                # Name and result class are added
-                cur_result = dict()
-                cur_result['name'] = test_name
-                # here the result can either be an individual result or a group
-                # result, in either case add it to the results list
+                # here the result can either be an individual result or a
+                # group result, in either case add it to the results list
                 cur_result['result'] = test_result
-                results.append(cur_result)
+            else:
+                # if the test either failed or never returned a result, make
+                # sure that's reported too
+                cur_result['result'] = TestResult(
+                    Result.FAIL, "Test failed to run, internal error")
+            results.append(cur_result)
 
         return TestResults(results)
 
