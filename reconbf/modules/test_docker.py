@@ -2,8 +2,8 @@ from lib.logger import logger
 import os
 import subprocess
 import lib.test_class as test_class
-from lib.test_result import Result, GroupTestResult, TestResult
-import lib.test_utils as test_utils
+from lib.result import Result, GroupTestResult, TestResult
+from lib import utils
 
 
 def _get_docker_processes():
@@ -13,7 +13,7 @@ def _get_docker_processes():
     :returns: A list containing any/all lines that have 'docker' in them.
     """
 
-    process_list = test_utils.running_processes()
+    process_list = utils.running_processes()
     docker_ps = []
 
     for entry in process_list:

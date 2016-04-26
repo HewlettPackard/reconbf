@@ -1,9 +1,9 @@
 from reconbf.lib.logger import logger
 from reconbf.lib import test_class
-from reconbf.lib.test_result import GroupTestResult
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
-from reconbf.lib import test_utils as utils
+from reconbf.lib.result import GroupTestResult
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 import multiprocessing
 import os

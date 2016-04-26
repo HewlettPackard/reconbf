@@ -1,7 +1,6 @@
 from .logger import logger
-from . import test_config
-from .test_config import ConfigNotFound
-from .test_result import TestResults
+from . import config
+from .result import TestResults
 from .. import modules
 
 import importlib
@@ -110,13 +109,12 @@ class TestSet():
             test_result = None
 
             fn = test['function']
-            config = test_config.config
 
             # if a function takes config, pass it the data for it
             if hasattr(fn, 'takes_config') and config:
                 try:
                     conf = config.get_config('modules.' + test_name)
-                except ConfigNotFound:
+                except config.ConfigNotFound:
                     logger.error("[-] Test [ {} ] requires config but could"
                                  "not be found.  Skipping...".
                                  format(test_name))

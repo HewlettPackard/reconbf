@@ -1,6 +1,5 @@
 from .logger import logger
-from . import test_config
-from .test_config import ConfigNotFound
+from . import config
 from . import test_constants
 
 import json
@@ -572,8 +571,6 @@ def _get_term_colors():
     # set bash colors - try from config and fallback to constants
     term_colors = {}
 
-    config = test_config.config
-
     try:
         term_colors['pass'] = config.get_config(
             "output.terminal.term_color_pass")
@@ -587,7 +584,7 @@ def _get_term_colors():
             # reconstruct proper escape sequence
             term_colors[color] = "\033[" + term_colors[color].split('[')[1]
 
-    except ConfigNotFound:
+    except config.ConfigNotFound:
         logger.info("[*] One or more terminal colors not loaded from config, "
                     "using defaults")
         term_colors['pass'] = test_constants.term_color_pass

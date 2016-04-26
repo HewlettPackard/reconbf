@@ -1,7 +1,7 @@
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
-from reconbf.lib.test_result import Result
-from reconbf.lib.test_result import TestResult
+from reconbf.lib.result import Result
+from reconbf.lib.result import TestResult
 
 from subprocess import PIPE
 from subprocess import Popen
