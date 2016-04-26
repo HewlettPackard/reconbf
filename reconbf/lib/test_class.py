@@ -48,7 +48,7 @@ class TestSet():
     def tests(self):
         return self._tests
 
-    def add_known_tests(self, configured_modules):
+    def add_known_tests(self, configured_modules=None):
         """Adds all known recon tests to the test set.
         """
 
@@ -60,7 +60,8 @@ class TestSet():
                 modules.__path__):
             logger.debug("[+] Importing tests module: %s", module_name)
 
-            if module_name not in configured_modules:
+            if configured_modules is not None and \
+                    module_name not in configured_modules:
                 logger.debug("[-] Module not configured: %s", module_name)
                 continue
 
@@ -72,7 +73,7 @@ class TestSet():
             # if it fails, die
             except ImportError:
                 logger.exception("[-] Could not import test module '%s'",
-                                 modules.__path__)
+                                 modules.__name__ + "." + module_name)
                 sys.exit(2)
 
             # otherwise we want to obtain a list of all functions in the module

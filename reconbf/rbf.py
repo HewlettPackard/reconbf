@@ -6,6 +6,7 @@ from .lib import test_constants as test_constants
 from .lib.result import ResultDisplayType
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -16,6 +17,11 @@ def main():
 
     log_level = _log_level_from_arg(args.level)
     _init_logger(level=log_level)
+
+    # are we just writing configuration instead of doing standard run?
+    if args.generate_config:
+        _generate_config(args.config_file, args.generate_config)
+        sys.exit()
 
     _check_root()
 
@@ -44,6 +50,36 @@ def main():
         sys.exit(1)
     else:
         sys.exit(0)
+
+
+def _generate_config(filename, mode):
+    new_config = {'modules': {}}
+    modules_config = new_config['modules']
+
+    test_set = TestSet()
+    test_set.add_known_tests()
+    for test in test_set.tests:
+        test_mod = test['module']
+
+        # insert module if missing
+        if test_mod not in modules_config:
+            modules_config[test_mod] = {}
+
+        # insert test config if needed
+        if hasattr(test['function'], "takes_config"):
+            if mode == 'default':
+                modules_config[test_mod][test['name']] = None
+            else:
+                test_config = test['function'].config_generator()
+                modules_config[test_mod][test['name']] = test_config
+
+    config_content = json.dumps(new_config, separators=(',', ': '),
+                                indent=4)
+    if filename:
+        with open(filename, "w") as f:
+            f.write(config_content)
+    else:
+        print(config_content)
 
 
 def _check_root():
@@ -126,6 +162,15 @@ def _parse_args():
     parser.add_argument('-c', '--config', dest='config_file', action='store',
                         default=None, type=str, help='use specified config '
                                                      'file instead of default')
+
+    parser.add_argument('-g', '--generate', dest='generate_config',
+                        action='store',
+                        choices=['default', 'inline'],
+                        default=None, type=str,
+                        help="generates config file contetns with all the "
+                             "available modules listed and either configured "
+                             "to use the config that comes with the test, or "
+                             "inlines the current default configuration")
 
     parser.add_argument('-l' '--level', dest='level', action='store',
                         choices=['debug', 'info', 'error'], default='info',
