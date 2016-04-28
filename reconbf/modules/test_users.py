@@ -99,7 +99,9 @@ def test_list_sudoers():
     for user in user_accounts:
         # set the user in the sudo command template
         list_sudoer_command[2] = user
-        output = subprocess.check_output(list_sudoer_command)
+        proc = subprocess.Popen(list_sudoer_command, stdout=subprocess.PIPE)
+        (output, _stderr) = proc.communicate()
+
         # if the output has the non-sudo user string in it, do nothing
         if not_sudo_string in output:
             pass
