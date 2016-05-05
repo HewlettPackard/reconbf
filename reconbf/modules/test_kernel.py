@@ -225,3 +225,34 @@ def test_ptrace_scope():
     enabled = int(open(ptrace_scope).read().strip())
     rc = Result.PASS if enabled >= 1 else Result.FAIL
     return TestResult(rc, notes="{} = {}".format(ptrace_scope, enabled))
+
+
+@test_class.explanation("""
+    Protection name: KASLR enabled
+
+    Check: Test if KASLR is active right now
+
+    Purpose: Similar to ASLR, kernel can be relocated to different
+    positions. This can be used for mitigating remote kernel exploits.
+    This protection is not as good as binaries ASLR, usually
+    provides only around 8 bits of randomness, and has known local
+    workarounds, however it can still block some of the remote
+    vulnerabilities.
+    """)
+def test_kaslr():
+    try:
+        with open('/sys/kernel/boot_params/data', 'rb') as params_file:
+            params = params_file.read()
+    except IOError:
+        return TestResult(Result.SKIP, "boot parameters are not available "
+                                       "on the /sys filesystem")
+
+    # setup_header at 0x1f1, loadflags 32 bytes in
+    loadflags = params[0x1f1 + 32]
+    if isinstance(loadflags, str):
+        loadflags = ord(loadflags)
+
+    if loadflags & 2:
+        return TestResult(Result.PASS, "Kaslr enabled")
+    else:
+        return TestResult(Result.FAIL, "Kaslr disabled")
