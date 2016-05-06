@@ -23,6 +23,23 @@ def main():
         _generate_config(args.config_file, args.generate_config)
         sys.exit()
 
+    # are we just explaining a specifc test?
+    if args.explain:
+        test_set = TestSet()
+        test_set.add_known_tests()
+        for test in test_set.tests:
+            test_name = test['module'] + '.' + test['name']
+            if test_name == args.explain:
+                print("Test:")
+                print("    " + test_name)
+                print("")
+                print("Explanation:")
+                print(test['function'].explanation)
+                sys.exit()
+
+        print("Test not found")
+        sys.exit(1)
+
     _check_root()
 
     # prefer: 1) cmd line config file  2) default
@@ -195,5 +212,10 @@ def _parse_args():
                              "failed, overall-displays parent test statuses "
                              "only, notpass-displays any test which didn't "
                              "pass")
+
+    parser.add_argument('-e', '--explain', action='store', default=None,
+                        metavar='TEST_NAME', type=str,
+                        help="explain what does a specific test "
+                             "module do and why")
 
     return parser.parse_args()
