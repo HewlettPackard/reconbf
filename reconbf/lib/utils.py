@@ -1,6 +1,7 @@
 from .logger import logger
 from . import config
 from . import constants
+from .result import Result, TestResult
 
 from collections import defaultdict
 import glob
@@ -222,31 +223,21 @@ def listening_executables():
     return sorted(executables)
 
 
-def config_search(filename, config_descriptor, comment_delims=['#'],
+def config_search(config_lines, config_descriptor, comment_delims=['#'],
                   keyval_delim=' '):
-    """Find the option value specified by config_descriptor in file specified
-    by filename.  If the file doesn't exist, will log an error and then
+    """Find the option value specified by config_descriptor in config provided
+    in config_lines.  If the file doesn't exist, will log an error and then
     re-raise the IOError exception.  If the option exists, return it, otherwise
     return None.
-    :param filename: The config file to look for the value in
+    :param config_lines: Lines of configuration file
     :param config_descriptor: String in the format 'section_header.value_name'
     :param comment_delims: (optional) list of characters which indicate a
     comment when seen at the beginning of the line
-
     :param keyval_delim: (optional) character which deliminates a key value
     separation
 
     :returns: Value of config setting if it exists, otherwise None
     """
-
-    try:
-        with open(filename, 'r') as fp:
-            config_lines = fp.readlines()
-
-    except IOError:
-        logger.error("[-] Unable to read config file: [ {} ] ".
-                     format(filename))
-        raise IOError
 
     config_sections = defaultdict(dict)
     current_header = ''
@@ -389,3 +380,89 @@ def kconfig_option(option, config=None):
         opt, val = parts
         if option == opt.strip():
             return val.strip()
+
+
+def verify_config(config_name, config_lines, checked_options,
+                  keyval_delim=' '):
+    """Verify the given config lines against the following rules described by
+    the checked_options parameter:
+
+    - keys represent options names in the config file
+    - options with "allowed" clause must be present
+    - "allowed" options must have one of the listed values or any value in case
+      of "allowed": "*"
+    - options with "disallowed" options must not contain listed values
+    - options with "disallowed": "*" must not be present at all
+    - otherwise, they're allowed to be missing
+    """
+    return_results = []
+
+    for option in checked_options:
+        option_value = config_search(config_lines, option,
+                                     keyval_delim=keyval_delim)
+
+        test_name = "{}: '{}'".format(config_name, option)
+
+        if option_value is None:
+            # option_value of None means that the config option wasn't set
+
+            # if it was supposed to be set to a value, the test fails
+            if 'allowed' in checked_options[option]:
+
+                # build note string based on the allowed value
+                if checked_options[option]['allowed'] == "*":
+                    allowed_val = "any value"
+                else:
+                    allowed_val = ("one of " +
+                                   str(checked_options[option]['allowed']))
+
+                reason = "Option expected to be " + allowed_val + ", not found"
+                result = Result.FAIL
+
+            # otherwise it passes
+            else:
+                reason = "Disallowed option not found"
+                result = Result.PASS
+
+        else:
+            # the option value was found- if we're checking allowed then the
+            # test passes when the value is in the allowed values, and fails
+            # when it isn't
+            if 'allowed' in checked_options[option]:
+                if(checked_options[option]['allowed'] == '*' or
+                        option_value in checked_options[option]['allowed']):
+                    result = Result.PASS
+                    reason = "Option value in expected value(s): "
+                    reason += str(checked_options[option]['allowed'])
+
+                else:
+                    result = Result.FAIL
+                    reason = "Option value: '{}', not in expected {}".format(
+                        option_value, str(checked_options[option]['allowed']))
+
+            # the option value was found, and we're checking if it is a
+            # disallowed value, fail if it is, and pass if it isn't
+            else:
+                # we're checking if value is a disallowed value
+                if(checked_options[option]['disallowed'] == '*' or
+                        option_value in checked_options[option]['disallowed']):
+
+                    # build note string based on the disallowed value
+                    if checked_options[option]['disallowed'] == '*':
+                        disallowed_val = "any value"
+                    else:
+                        disallowed_val = "one of " + str(
+                            checked_options[option]['disallowed'])
+
+                    result = Result.FAIL
+                    reason = "Option value: '{}' ".format(option_value)
+                    reason += "in disallowed value: {}".format(disallowed_val)
+
+                else:
+                    result = Result.PASS
+                    reason = "Option value: {} not disallowed".format(
+                        option_value)
+
+        return_results.append((test_name, TestResult(result, reason)))
+
+    return return_results

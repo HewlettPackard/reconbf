@@ -158,6 +158,14 @@ def test_processes_have_corresponding_files():
     return results
 
 
+def _read_svc_config(config_path):
+    try:
+        with open(config_path, 'r') as conf_f:
+            return conf_f.readlines()
+    except IOError:
+        return None
+
+
 def _check_svc_config(req):
     """Return a TestResult based on whether the specified service config
     requirement is met.  Since a service config requirement may include
@@ -167,7 +175,6 @@ def _check_svc_config(req):
     :param req: Requirement specification (one entry from the config file)
     :return: A list of name, TestResult tuples to add to the group test result
     """
-    return_results = []
 
     # the options to check are the items in the requirement other than the name
     # and config file
@@ -176,84 +183,13 @@ def _check_svc_config(req):
         if r not in ['name', 'config']:
             checked_options[r] = req[r]
 
-    for option in checked_options:
-        try:
-            option_value = utils.config_search(req['config'], option)
+    config_lines = _read_svc_config(req['config'])
+    if config_lines is None:
+        return [(req['name'],
+                 TestResult(Result.SKIP, "Unable to open config file { " +
+                                         req['config'] + " }"))]
 
-        except IOError:
-            # no point keep trying to check this config file if we can't open
-            # it
-            return_results.append((req['name'],
-                                   TestResult(Result.SKIP,
-                                              "Unable to open config file { " +
-                                              req['config'] + " }")))
-            break
-
-        test_name = "{}: '{}'".format(req['name'], option)
-
-        if option_value is None:
-            # option_value of None means that the config option wasn't set
-
-            # if it was supposed to be set to a value, the test fails
-            if 'allowed' in checked_options[option]:
-
-                # build note string based on the allowed value
-                if checked_options[option]['allowed'] == "*":
-                    allowed_val = "any value"
-                else:
-                    allowed_val = ("one of " +
-                                   str(checked_options[option]['allowed']))
-
-                reason = "Option expected to be " + allowed_val + ", not found"
-                result = Result.FAIL
-
-            # otherwise it passes
-            else:
-                reason = "Disallowed option not found"
-                result = Result.PASS
-
-        else:
-            # the option value was found- if we're checking allowed then the
-            # test passes when the value is in the allowed values, and fails
-            # when it isn't
-            if 'allowed' in checked_options[option]:
-                if(checked_options[option]['allowed'] == '*' or
-                        option_value in checked_options[option]['allowed']):
-                    result = Result.PASS
-                    reason = "Option value in expected value(s): "
-                    reason += str(checked_options[option]['allowed'])
-
-                else:
-                    result = Result.FAIL
-                    reason = "Option value: '{}', not in expected {}".format(
-                        option_value, str(checked_options[option]['allowed']))
-
-            # the option value was found, and we're checking if it is a
-            # disallowed value, fail if it is, and pass if it isn't
-            else:
-                # we're checking if value is a disallowed value
-                if(checked_options[option]['disallowed'] == '*' or
-                        option_value in checked_options[option]['disallowed']):
-
-                    # build note string based on the disallowed value
-                    if checked_options[option]['disallowed'] == '*':
-                        disallowed_val = "any value"
-                    else:
-                        disallowed_val = "one of " + str(
-                            checked_options[option]['disallowed'])
-
-                    result = Result.FAIL
-                    reason = "Option value: '{}' ".format(option_value)
-                    reason += "in disallowed value: {}".format(disallowed_val)
-
-                else:
-                    result = Result.PASS
-                    reason = "Option value: {} not disallowed".format(
-                        option_value)
-
-        return_results.append((test_name, TestResult(result, reason)))
-
-    return return_results
+    return utils.verify_config(req['name'], config_lines, checked_options)
 
 
 def _check_valid_req(req):
