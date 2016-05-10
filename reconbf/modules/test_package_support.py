@@ -11,14 +11,16 @@ def _check_packages_ubuntu():
     lines = res.splitlines()
 
     for line in lines:
-        if not line.startswith('You have '):
+        if not line.startswith(b'You have '):
             continue
-        if 'that are unsupported' not in line:
+        if b'that are unsupported' not in line:
             continue
 
-        if line.startswith("You have 0 packages"):
+        if line.startswith(b"You have 0 packages"):
             return TestResult(Result.PASS, "Only supported packages installed")
         else:
+            if bytes is not str:
+                line = line.decode('utf-8', errors='replace')
             return TestResult(Result.FAIL, line.strip())
 
     return TestResult(Result.FAIL, "Unexpected ubuntu-support-status response")
