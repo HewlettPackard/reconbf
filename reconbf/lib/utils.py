@@ -25,13 +25,13 @@ def check_path_exists(path):
     :param path: The path to check
     :returns: True or False
     """
-    logger.debug("[*] Testing for existence of path { " + path + " }")
+    logger.debug("Testing for existence of path { " + path + " }")
 
     return_value = os.path.exists(path)
     if return_value:
-        logger.debug("[+] Path [ {} ] exists".format(path))
+        logger.debug("Path [ {} ] exists".format(path))
     else:
-        logger.debug("[-] Path [ {} ] doesn't exist".format(path))
+        logger.debug("Path [ {} ] doesn't exist".format(path))
 
     return return_value
 
@@ -43,15 +43,15 @@ def get_stats_on_file(file_name):
     :param file_name: The filename to get stat for
     :returns: an os.stat return value
     """
-    logger.debug("[*] Retrieving permission for file [ %s ] ", file_name)
+    logger.debug("Retrieving permission for file [ %s ] ", file_name)
 
     return_value = None
     try:
         return_value = os.stat(file_name)
     except OSError:
-        logger.info("[*] Stat for [ %s ] failed", file_name)
+        logger.info("Stat for [ %s ] failed", file_name)
     else:
-        logger.debug("[+] Permissions: %s found for [ %s ]", return_value,
+        logger.debug("Permissions: %s found for [ %s ]", return_value,
                      file_name)
     return return_value
 
@@ -66,12 +66,12 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     """
     return_list = None
 
-    logger.debug("[*] Listing files from directory [ {} ] ".format(base_path))
+    logger.debug("Listing files from directory [ {} ] ".format(base_path))
 
     if not check_path_exists(base_path):
         pass
     elif not os.path.isdir(base_path):
-        logger.debug("[-] Path [ {} ] is not a directory".format(base_path))
+        logger.debug("Path [ {} ] is not a directory".format(base_path))
     else:
         # we have a directory, get all the files from it
         return_list = []
@@ -97,7 +97,7 @@ def get_sysctl_value(path):
     :param path: The path relative to base sysctl of the setting to retrieve
     :returns: The value of the specified sysctl setting
     """
-    logger.debug("[*] Testing for sysctl value [ {} ] ".format(path))
+    logger.debug("Testing for sysctl value [ {} ] ".format(path))
 
     # load sysctl_path from config if possible, otherwise grab default
     sysctl_path = config.get_config("paths.sysctl_path", constants.SYSCTL_PATH)
@@ -109,14 +109,14 @@ def get_sysctl_value(path):
         with open(file_path, 'r') as sysctl_file:
             value = sysctl_file.readline().strip()
     except IOError:
-        logger.warning("[-] Sysctl path [ {} ] not found".format(file_path))
+        logger.warning("Sysctl path [ {} ] not found".format(file_path))
         raise ValNotFound
     except EnvironmentError:
-        logger.debug("[-] Unable to read sysctl value [ {} ]".
+        logger.debug("Unable to read sysctl value [ {} ]".
                      format(file_path))
         raise ValNotFound
     else:
-        logger.debug("[+] Value found: [ {} ] ".format(value))
+        logger.debug("Value found: [ {} ] ".format(value))
 
     return value
 
@@ -134,7 +134,7 @@ def running_processes():
         try:
             exe = os.path.realpath('/proc/{}/exe'.format(pid))
         except OSError:
-            logger.debug("[*] Unable to locate exe for [ {} ]".format(pid))
+            logger.debug("Unable to locate exe for [ {} ]".format(pid))
         procs.append((pid, exe))
 
     return procs
@@ -157,7 +157,7 @@ def is_service_running(service_name):
 
     # service command doesn't exist...
     except OSError:
-        logger.error("[-] Unable to call service command")
+        logger.error("Unable to call service command")
 
     except subprocess.CalledProcessError:
         # this indicates service is not running
@@ -179,7 +179,7 @@ def executables_in_path():
     try:
         syspath = os.environ['PATH']
     except KeyError:
-        logger.debug("[*] $PATH variable not set.")
+        logger.debug("$PATH variable not set.")
         return []
 
     for path in syspath.split(':'):
@@ -288,7 +288,7 @@ def config_search(config_lines, config_descriptor, comment_delims=['#'],
         option = config_descriptors[1]
 
     else:
-        logger.error('[-] Malformed config descriptor: [ {} ]'.
+        logger.error('Malformed config descriptor: [ {} ]'.
                      format(config_descriptor))
         return None
 
@@ -311,7 +311,7 @@ def have_command(cmd):
         return rc == 0
 
     except subprocess.CalledProcessError:
-        logger.debug("[*] {} not on $PATH".format(cmd))
+        logger.debug("{} not on $PATH".format(cmd))
 
     return False
 
@@ -368,7 +368,7 @@ def kconfig_option(option, config=None):
         config = kconfig()
 
     if not config:
-        logger.info("[-] Unable to find kernel config!")
+        logger.info("Unable to find kernel config!")
         return None
 
     for line in config.split('\n'):

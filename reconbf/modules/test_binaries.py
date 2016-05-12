@@ -195,7 +195,7 @@ def _check_fortify(path):
     """
     libc = _find_used_libc(path)
     if not libc:
-        logger.debug('  [*] Unable to determine location of libc')
+        logger.debug('Unable to determine location of libc')
         return False
 
     fortified = set([])
@@ -232,7 +232,7 @@ def _extract_symbols(cmd):
 
                 yield (sym_addr, sym_type, sym_name.split(b'@@')[0])
             except ValueError as err:
-                logger.debug('[*] Unexpected output [ {} ]'.format(
+                logger.debug('Unexpected output [ {} ]'.format(
                     entry.strip()))
 
     except subprocess.CalledProcessError as err:

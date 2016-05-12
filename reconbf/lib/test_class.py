@@ -58,11 +58,11 @@ class TestSet():
 
         for _loader, module_name, _ispkg in pkgutil.iter_modules(
                 modules.__path__):
-            logger.debug("[+] Importing tests module: %s", module_name)
+            logger.debug("Importing tests module: %s", module_name)
 
             if configured_modules is not None and \
                     module_name not in configured_modules:
-                logger.debug("[-] Module not configured: %s", module_name)
+                logger.debug("Module not configured: %s", module_name)
                 continue
 
             # try to import the module by name
@@ -72,7 +72,7 @@ class TestSet():
 
             # if it fails, die
             except ImportError:
-                logger.exception("[-] Could not import test module '%s'",
+                logger.exception("Could not import test module '%s'",
                                  modules.__name__ + "." + module_name)
                 sys.exit(2)
 
@@ -116,7 +116,7 @@ class TestSet():
                 try:
                     conf = config.get_config('modules.' + test_name)
                 except config.ConfigNotFound:
-                    logger.error("[-] Test [ {} ] requires config but could"
+                    logger.error("Test [ {} ] requires config but could"
                                  "not be found.  Skipping...".
                                  format(test_name))
                 else:
@@ -128,7 +128,7 @@ class TestSet():
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
                     except Exception as e:
-                        logger.exception("[-] Exception in test [ {} ]".
+                        logger.exception("Exception in test [ {} ]".
                                          format(test_name, e))
 
             else:
@@ -136,7 +136,7 @@ class TestSet():
                     test_result = fn()
                 # catch anything that goes wrong with a test
                 except Exception as e:
-                    logger.exception("[-] Exception in test [ {} ]: {}".
+                    logger.exception("Exception in test [ {} ]: {}".
                                      format(test_name, e))
 
             # Name and result class are added
@@ -173,7 +173,7 @@ class TestSet():
             script_f.close()
 
         except IOError:
-            logger.error("[-] Unable to open script file [ {} ]".
+            logger.error("Unable to open script file [ {} ]".
                          format(script_file))
             return False
 
@@ -183,12 +183,12 @@ class TestSet():
                 # and add it
                 test = self._find_test_by_can_name(line.strip())
                 if not test:
-                    logger.error("[-] Unable to find test: [ {} ]".
+                    logger.error("Unable to find test: [ {} ]".
                                  format(line.strip('\n')))
                     sys.exit(2)
                 new_test_set.append(test)
 
-        logger.info("[+] Loaded script [ {} ]".format(script_file))
+        logger.info("Loaded script [ {} ]".format(script_file))
         self._tests = new_test_set
         return True
 
@@ -203,7 +203,7 @@ class TestSet():
 
         # if we don't have a well-formed canonical name, don't try to find it
         if len(module_ids) != 2:
-            logger.error("[-] Malformed script line: [ {} ]".
+            logger.error("Malformed script line: [ {} ]".
                          format(module_str))
             return None
 

@@ -119,7 +119,7 @@ def _parse_colon_delim(input_list, key=''):
     and controls already implemented at that level.
     """)
 def test_traffic():
-    logger.debug("[*] Testing for restricted traffic between containers.")
+    logger.debug("Testing for restricted traffic between containers.")
     reason = "No Docker containers found."
 
     result = None
@@ -151,7 +151,7 @@ def test_traffic():
     both due to information collected and volume of events generated.
     """)
 def test_log_level():
-    logger.debug("[*] Checking the Docker log level.")
+    logger.debug("Checking the Docker log level.")
     reason = "No Docker containers found."
 
     result = None
@@ -190,7 +190,7 @@ def test_log_level():
     Docker-server will no longer maintain the firewall rules.
     """)
 def test_iptables():
-    logger.debug("[*] Checking the firewall settings.")
+    logger.debug("Checking the firewall settings.")
     reason = "No Docker containers found."
 
     result = None
@@ -221,7 +221,7 @@ def test_iptables():
     with proper integrity, communication, and validation controls applied.
     """)
 def test_insecure_registries():
-    logger.debug("[*] Testing for insecure registries.")
+    logger.debug("Testing for insecure registries.")
     reason = "No Docker containers found."
 
     result = None
@@ -252,7 +252,7 @@ def test_insecure_registries():
     using this interface or port and should not be used.
     """)
 def test_port_binding():
-    logger.debug("[*] Testing for insecure registries.")
+    logger.debug("Testing for insecure registries.")
     reason = "No Docker containers found."
 
     result = None
@@ -291,7 +291,7 @@ def test_secure_communication():
     # that clients connect to securely (for --tlscert and tlskey), and
     # if so, break them into separate tests for better profile coverage
 
-    logger.debug("[*] Testing for insecure registries.")
+    logger.debug("Testing for insecure registries.")
     reason = "No Docker containers found."
 
     docker_ps = _get_docker_processes()
@@ -306,15 +306,15 @@ def test_secure_communication():
                         reason = ("Container set to validate certificates, "
                                   "has both certificate and key in place, "
                                   "and can act as an intermediate CA.")
-                        logger.info("[+] {}".format(reason))
+                        logger.info(reason)
                     else:
                         reason = ("No CA certificate, container cannot act "
                                   "as intermediate CA.")
-                        logger.info("[-] {}".format(reason))
+                        logger.info(reason)
                 else:
                     reason = ("A public Certificate exists, but key does not."
                               " Communciation unable to be decrypted.")
-                    logger.info("[-] {}".format(reason))
+                    logger.info(reason)
 
             else:
                 reason = ("No certificate available, container will only be"
@@ -341,7 +341,7 @@ def test_secure_communication():
     it should be outside there.
     """)
 def test_no_lxc():
-    logger.debug("[*] Testing if the container is running in LXC memory.")
+    logger.debug("Testing if the container is running in LXC memory.")
     reason = "No Docker containers found."
 
     result = None
@@ -371,7 +371,7 @@ def test_no_lxc():
     that memory used by the container is not being used by root.
     """)
 def test_user_owned():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     reason = "No Docker containers found."
 
     containers = _get_docker_ps()
@@ -407,7 +407,7 @@ def test_user_owned():
     items that could be used to compromise a system.
     """)
 def test_list_installed_packages():
-    logger.debug("[*] Listing installed packages.")
+    logger.debug("Listing installed packages.")
     notes = ""
 
     containers = _get_docker_ps()
@@ -453,7 +453,7 @@ def test_list_installed_packages():
     the container. As such it should not be used.
     """)
 def test_storage_driver():
-    logger.debug("[*] Checking storage driver.")
+    logger.debug("Checking storage driver.")
     notes = "No Docker containers found."
 
     driver = _parse_colon_delim(list, key='Storage Driver')
@@ -484,7 +484,7 @@ def test_storage_driver():
     environment. Check is only valid for pre-3.11 kernels.
     """)
 def test_docker_daemon():
-    logger.debug("[*] Checking auditing on the Docker daemon.")
+    logger.debug("Checking auditing on the Docker daemon.")
     note = "Test is invalid for newer kernels."
 
     kernel = os.uname()[2].split('.')
@@ -522,7 +522,7 @@ def test_docker_daemon():
     the container can then do almost everything that the host can do.
     """)
 def test_docker_privilege():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -568,7 +568,7 @@ def test_docker_privilege():
     use all of the allotted memory given to a host machine.
     """)
 def test_memory_limit():
-    logger.debug("[*] Testing if the container has memory limitations.")
+    logger.debug("Testing if the container has memory limitations.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -627,7 +627,7 @@ def test_memory_limit():
     to use them can bring serious implications.
     """)
 def test_privilege_port_mapping():
-    logger.debug("[*] Testing if the container has memory limitations.")
+    logger.debug("Testing if the container has memory limitations.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -684,7 +684,7 @@ def test_privilege_port_mapping():
     to open low-numbered ports like any other root process.
     """)
 def test_host_network_mode():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -731,7 +731,7 @@ def test_host_network_mode():
     Service.
     """)
 def test_cpu_priority():
-    logger.debug("[*] Testing if the container has memory limitations.")
+    logger.debug("Testing if the container has memory limitations.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -791,7 +791,7 @@ def test_cpu_priority():
     defined and administered.
     """)
 def test_read_only_root_fs():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -839,7 +839,7 @@ def test_read_only_root_fs():
     restart.
     """)
 def test_restart_policy():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -912,7 +912,7 @@ def test_restart_policy():
     the containers.
     """)
 def test_docker_pid_mode():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -960,7 +960,7 @@ def test_docker_pid_mode():
     state.
     """)
 def test_mount_sensitive_directories():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -1008,7 +1008,7 @@ def test_mount_sensitive_directories():
     IPC on the host system.
     """)
 def test_IPC_host():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()
@@ -1055,7 +1055,7 @@ def test_IPC_host():
     many vulnerabilities such as a fork bomb.
     """)
 def test_ulimit_default_override():
-    logger.debug("[*] Testing if the container is running in user namespace.")
+    logger.debug("Testing if the container is running in user namespace.")
     notes = "No Docker containers found or docker is not running."
 
     results = GroupTestResult()

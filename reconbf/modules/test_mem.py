@@ -19,18 +19,18 @@ from subprocess import check_output
     overflow attacks.
     """)
 def test_NX():
-    logger.debug("[*] Checking if NX (or NX emulation) is present.")
+    logger.debug("Checking if NX (or NX emulation) is present.")
 
     output = check_output(["dmesg"])
     if b'NX (Execute Disable) protection: active' in output:
         reason = "NX protection active in BIOS."
-        logger.debug("[+] {}".format(reason))
+        logger.debug(reason)
         result = Result.PASS
 
     else:
         # not active
         reason = "NX protection disabled in BIOS."
-        logger.debug("[-] {}".format(reason))
+        logger.debug(reason)
         result = Result.FAIL
 
     return TestResult(result, reason)
@@ -52,7 +52,7 @@ def test_NX():
 def test_devmem():
     # initial configurations
     reason = " "
-    logger.debug("[*] Attempting to validate /dev/mem protection.")
+    logger.debug("Attempting to validate /dev/mem protection.")
     result = Result.FAIL  # set fail by default?
 
     # check kernel config - CONFIG_STRICT_DEVMEM=y
@@ -61,11 +61,11 @@ def test_devmem():
 
         if devmem_val == 'y':
             reason = "/dev/mem protection is enabled."
-            logger.debug("[+] {}".format(reason))
+            logger.debug(reason)
             result = Result.PASS
         elif devmem_val == 'n':
             reason = "/dev/mem protection is not enabled."
-            logger.debug("[-] {}".format(reason))
+            logger.debug(reason)
             result = Result.FAIL
         else:
             result = Result.SKIP
@@ -73,7 +73,7 @@ def test_devmem():
 
     except IOError as e:
         reason = "Error opening /proc/config.gz."
-        logger.debug("[*] Unable to open /proc/config.gz.\n"
+        logger.debug("Unable to open /proc/config.gz.\n"
                      "    Exception information: [ {} ]".format(e))
         result = Result.SKIP
 

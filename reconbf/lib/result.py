@@ -221,7 +221,7 @@ class TestResults:
         :param separator_char: (optional) Separator character for fields
         :return: -
         """
-        logger.info("[*] Preparing to write CSV file [ {} ] ".format(filename))
+        logger.info("Preparing to write CSV file [ {} ] ".format(filename))
 
         # TODO(tmcpeak): Fix write CSV to use a real CSV library
         # TODO(tmcpeak): Fix write CSV to reflect new results list structure
@@ -252,10 +252,10 @@ class TestResults:
                     csv_output.write(line + "\n")
 
         except EnvironmentError:
-            logger.info("[-] Unable to open CSV file [ {} ] for writing".
+            logger.info("Unable to open CSV file [ {} ] for writing".
                         format(filename))
         else:
-            logger.info("[+] Writing CSV file: [ {} ] successful ".
+            logger.info("Writing CSV file: [ {} ] successful ".
                         format(filename))
 
     def write_html(self, filename, html_template,
@@ -272,7 +272,7 @@ class TestResults:
 
         html_rows = ""
 
-        logger.info("[*] Preparing to write HTML file: [ {} ]".
+        logger.info("Preparing to write HTML file: [ {} ]".
                     format(filename))
 
         for res in self._results:
@@ -330,7 +330,7 @@ class TestResults:
             template_content = temp_file.read()
             temp_file.close()
         except EnvironmentError:
-            logger.error("[-] Unable to open template file: [ {} ]".
+            logger.error("Unable to open template file: [ {} ]".
                          format(html_template))
             return
 
@@ -339,12 +339,12 @@ class TestResults:
         try:
             output_file = open(filename, 'w')
         except EnvironmentError:
-            logger.error("[-] Unable to open output file: [ {} ] for writing".
+            logger.error("Unable to open output file: [ {} ] for writing".
                          format(filename))
         else:
             output_file.write(template_content)
             output_file.close()
-            logger.info("[+] Successfully wrote HTML file: [ {} ]".
+            logger.info("Successfully wrote HTML file: [ {} ]".
                         format(filename))
 
     def write_json(self, filename):
@@ -355,7 +355,7 @@ class TestResults:
         :param filename:
         :returns: -
         """
-        logger.info("[*] Preparing to write JSON file [ {} ]".format(filename))
+        logger.info("Preparing to write JSON file [ {} ]".format(filename))
 
         # Get the test results into an object format that can be serialized
         tests = []
@@ -386,10 +386,10 @@ class TestResults:
                 # sort keys so that we have deterministic results
                 json.dump(tests, json_output_file, indent=4)
         except EnvironmentError:
-            logger.info("[-] Unable to open JSON file [ {} ] for writing!".
+            logger.info("Unable to open JSON file [ {} ] for writing!".
                         format(filename))
         else:
-            logger.info("[+] Writing JSON file: [ {} ] successful!".
+            logger.info("Writing JSON file: [ {} ] successful!".
                         format(filename))
 
 

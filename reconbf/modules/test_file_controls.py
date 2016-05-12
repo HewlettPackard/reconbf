@@ -162,7 +162,7 @@ def test_perms_and_ownership(file_reqs):
                     result = _does_perms_meet_req(stats,
                                                   req['disallowed_perms'])
                     if result.result == Result.SKIP:
-                        logger.info("[-] Got malformed permission requirement "
+                        logger.info("Got malformed permission requirement "
                                     "{}".format(req['disallowed_perms']))
 
                     results.add_result(check_name, result)

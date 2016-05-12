@@ -213,26 +213,26 @@ def _check_valid_req(req):
     # if the requirement does not contain all required fields
     if(not req['services'] or not req['expected'] or not req['match'] or
             not req['fail']):
-        logger.error("[-] Service requirement missing required field: {}".
+        logger.error("Service requirement missing required field: {}".
                      format(req))
         return None
 
     # check correct values for requirement
     elif type(req['services']) != list:
-        logger.error("[-] Expected list of services: " + req)
+        logger.error("Expected list of services: " + req)
         return None
 
     elif req['expected'] not in ['on', 'off']:
-        logger.error("[-] Expected value of 'on' or 'off' for 'expected': {}".
+        logger.error("Expected value of 'on' or 'off' for 'expected': {}".
                      format(req))
         return None
 
     elif req['match'] not in ['all', 'one']:
-        logger.error("[-] Expected value of 'all' or 'one' for 'match': {}".
+        logger.error("Expected value of 'all' or 'one' for 'match': {}".
                      format(req))
 
     elif req['fail'] not in ['True', 'False']:
-        logger.error("[-] Expected value of 'True' or 'False' for 'fail': {}".
+        logger.error("Expected value of 'True' or 'False' for 'fail': {}".
                      format(req))
 
     else:

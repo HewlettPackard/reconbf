@@ -29,12 +29,12 @@ def _conf_test_shellshock():
     use a version of bash which has been patched.
     """)
 def test_shellshock(config):
-    logger.debug("[*] Testing shell for 'shellshock/bashbug' vulnerability.")
+    logger.debug("Testing shell for 'shellshock/bashbug' vulnerability.")
 
     try:
         cmd = config['exploit_command']
     except KeyError:
-        logger.error("[-] Can't find exploit command for shellshock test")
+        logger.error("Can't find exploit command for shellshock test")
     else:
 
         p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
@@ -42,11 +42,11 @@ def test_shellshock(config):
 
         if b'vulnerable' in stdout:
             reason = "System is vulnerable to Shellshock/Bashbug."
-            logger.info("[-] {}".format(reason))
+            logger.info(reason)
             result = Result.FAIL
         else:
             reason = "System is not vulnerable to Shellshock/Bashbug."
-            logger.info("[+] {}".format(reason))
+            logger.info(reason)
             result = Result.PASS
         return TestResult(result, reason)
 
@@ -168,8 +168,7 @@ def test_sysctl_values(sysctl_reqs):
                                    TestResult(cur_result, notes=notes))
 
             else:
-                logger.info("[-] Got malformed requirement {}".
-                            format(requirement))
+                logger.info("Got malformed requirement {}".format(requirement))
     return results
 
 
@@ -186,7 +185,7 @@ def test_sysctl_values(sysctl_reqs):
     whatever communication or package that is received is valid.
     """)
 def test_certs():
-    logger.debug("[*] Testing bundled certificate validity & expiration.")
+    logger.debug("Testing bundled certificate validity & expiration.")
 
     certList = []
     certStore = '/etc/ssl/certs'
@@ -198,7 +197,7 @@ def test_certs():
 
     if certList is None:
         notes = "/etc/ssl/certs is empty, please check on-system certificates."
-        logger.debug("[*] {}".format(notes))
+        logger.debug(notes)
         result = Result.SKIP
         return TestResult(result, notes)
 
@@ -207,7 +206,7 @@ def test_certs():
             p = Popen(['openssl', 'verify', cert], stdout=PIPE, shell=False)
             stdout = p.communicate()
             if b"OK" in stdout[0]:
-                logger.debug("[+] Certificate verification success for: {}".
+                logger.debug("Certificate verification success for: {}".
                              format(cert))
                 if result is None:
                     result = Result.PASS
@@ -217,13 +216,13 @@ def test_certs():
                     notes += "Error validating certificate: " + cert
                 else:
                     notes += ", " + cert
-                logger.debug("[-] Certificate verification failure for: {}".
+                logger.debug("Certificate verification failure for: {}".
                              format(cert))
 
         except ValueError as e:
             notes = "Error running 'openssl verify " + cert + "'"
-            logger.debug("[*] {}. \n   Error: {}".format(notes, e))
+            logger.debug("{}. \n   Error: {}".format(notes, e))
             result = Result.SKIP
 
-    logger.debug("[*] Completed on-system certificate validation tests.")
+    logger.debug("Completed on-system certificate validation tests.")
     return TestResult(result, notes)
