@@ -77,7 +77,7 @@ should not affect processes on a production system.
                             overall-displays parent test statuses only, notpass-
                             displays any test which didn't pass
 
-The default way to run Recon is just `python rbf.py` or install it and run
+The default way to run Recon is just `python -m reconbf` or install it and run
 `reconbf` (both with `sudo` if running as a non-root user).
 
 If you need to adjust the configuration or verify your system against only a

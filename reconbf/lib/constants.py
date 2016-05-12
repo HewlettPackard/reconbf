@@ -6,8 +6,9 @@ that they aren't specified in the config file.
 csv_separator = '|'
 config_dir = 'config'
 file_perms_file = 'config/file_controls.cfg'
-logger_name = 'default'
-log_format_string = '%(asctime)s - %(levelname)s - %(module)s - %(message)s'
+logger_name = 'root'
+logger_fmt = ('%(asctime)s %(levelname)7s: %(message)s ' +
+              '- (%(filename)s:%(lineno)d)')
 max_line_length = 200
 sysctl_path = '/proc/sys'
 term_color_end = '\033[0;m'

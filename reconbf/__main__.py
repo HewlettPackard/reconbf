@@ -2,7 +2,6 @@
 from .lib.logger import logger
 from .lib.test_class import TestSet
 from .lib import config
-from .lib import constants
 from .lib.result import ResultDisplayType
 
 import argparse
@@ -15,8 +14,7 @@ import sys
 def main():
     args = _parse_args()
 
-    log_level = _log_level_from_arg(args.level)
-    _init_logger(level=log_level)
+    logger.setLevel(_log_level_from_arg(args.level))
 
     # are we just writing configuration instead of doing standard run?
     if args.generate_config:
@@ -137,17 +135,6 @@ def _log_level_from_arg(specified_level):
     return log_level
 
 
-def _init_logger(level):
-    formatter = logging.Formatter(fmt=constants.log_format_string)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-
-    global_logger = logging.getLogger(constants.logger_name)
-    global_logger.setLevel(level)
-    global_logger.addHandler(handler)
-
-
 def _output_report(results, report_type, report_file, display_mode=None):
     if report_type == 'csv':
         results.write_csv(report_file)
@@ -219,3 +206,7 @@ def _parse_args():
                              "module do and why")
 
     return parser.parse_args()
+
+
+if __name__ == "__main__":
+    main()
