@@ -1,5 +1,5 @@
 from lib.test_class import TestSet
-import lib.test_constants as test_constants
+from lib import constants
 
 import argparse
 import sys
@@ -9,7 +9,7 @@ def main():
     args = _parse_args()
 
     test_set = TestSet()
-    test_set.add_from_directory(test_constants.test_dir)
+    test_set.add_from_directory(constants.TEST_DIR)
 
     if args.list:
         _display_test_list(test_set)
@@ -111,14 +111,12 @@ def _print_test(test_dict, explanation_type=PrintExplanationType.ONE_LINE,
     else:
         indent = ""
 
-    max_line_length = test_constants.max_line_length
-
     print_string = ""
     print_string += '{0: <50}'.format(indent + test_dict['module'] +
                                       '.' + test_dict['test'])
 
     if explanation_type == PrintExplanationType.ONE_LINE:
-        explain_length = max_line_length - 70
+        explain_length = constants.MAX_LINE_LENGTH - 70
 
         explanation_lines = test_dict['explanation'].split('\n')
         # we'll use the first line which contains non-whitespace chars

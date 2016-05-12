@@ -208,7 +208,7 @@ class TestResults:
                     return True
         return False
 
-    def write_csv(self, filename, separator_char=constants.csv_separator):
+    def write_csv(self, filename, separator_char=constants.CSV_SEPARATOR):
         """Create a CSV file in the specified location with an optionally
         specified separator, default: '|'
 
@@ -572,13 +572,13 @@ def _get_term_colors():
     term_colors = {}
 
     term_colors['pass'] = config.get_config(
-        "output.terminal.term_color_pass", constants.term_color_pass)
+        "output.terminal.term_color_pass", constants.TC_PASS)
     term_colors['fail'] = config.get_config(
-        "output.terminal.term_color_fail", constants.term_color_fail)
+        "output.terminal.term_color_fail", constants.TC_FAIL)
     term_colors['skip'] = config.get_config(
-        "output.terminal.term_color_skip", constants.term_color_skip)
+        "output.terminal.term_color_skip", constants.TC_SKIP)
     term_colors['end'] = config.get_config(
-        "output.terminal.term_color_end", constants.term_color_end)
+        "output.terminal.term_color_end", constants.TC_END)
     for color in term_colors:
         # reconstruct proper escape sequence
         term_colors[color] = "\033[" + term_colors[color].split('[')[1]

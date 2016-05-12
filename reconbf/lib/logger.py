@@ -2,8 +2,8 @@ import logging
 from . import constants
 
 # global logger
-logger = logging.getLogger(constants.logger_name)
-formatter = logging.Formatter(fmt=constants.logger_fmt)
+logger = logging.getLogger(constants.LOG_NAME)
+formatter = logging.Formatter(fmt=constants.LOG_FMT)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 logger.addHandler(handler)

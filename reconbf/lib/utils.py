@@ -100,7 +100,7 @@ def get_sysctl_value(path):
     logger.debug("[*] Testing for sysctl value [ {} ] ".format(path))
 
     # load sysctl_path from config if possible, otherwise grab default
-    sysctl_path = config.get_config("paths.sysctl_path", constants.sysctl_path)
+    sysctl_path = config.get_config("paths.sysctl_path", constants.SYSCTL_PATH)
 
     value = None
     file_path = sysctl_path + "/" + path
