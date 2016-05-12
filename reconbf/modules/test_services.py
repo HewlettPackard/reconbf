@@ -133,6 +133,8 @@ def test_service_config(svccfg_reqs):
     """)
 def test_processes_have_corresponding_files():
     missing = []
+    if not os.path.exists('/proc'):
+        return TestResult(Result.SKIP, "/proc filesystem not found")
 
     for pid in os.listdir('/proc'):
         if not pid.isdigit():

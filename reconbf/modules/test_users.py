@@ -3,15 +3,9 @@ import reconbf.lib.test_class as test_class
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 
-try:
-    import grp
-    import pwd
-
-    import spwd
-except ImportError as e:
-    logger.error("[-] Error importing module: {}".format(e))
-
 from collections import defaultdict
+import grp
+import pwd
 import subprocess
 
 
@@ -31,6 +25,12 @@ import subprocess
     system.
     """)
 def test_accounts_nopassword():
+    try:
+        import spwd
+    except ImportError:
+        logger.info("Import of spwd failed ")
+        return TestResult(Result.SKIP, "Unable to import 'spwd' module")
+
     disabled = []
     locked = []
     passworded = []
