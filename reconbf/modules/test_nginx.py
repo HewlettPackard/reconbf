@@ -1,11 +1,11 @@
 from reconbf.lib import test_class
+from reconbf.lib import utils
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 
 import glob
 import os
-import subprocess
 
 
 NGINX_CONFIG_PATH = "/etc/nginx/nginx.conf"
@@ -250,11 +250,6 @@ def ssl_protos(bad_protos):
     return results
 
 
-def _expand_ssl_ciphers(ciphers):
-    result = subprocess.check_output(['openssl', 'ciphers', ciphers])
-    return result.decode('ascii').split(':')
-
-
 def _conf_bad_ciphers():
     return ['DES', 'MD5', 'RC4', 'DSS', 'SEED', 'aNULL', 'eNULL']
 
@@ -279,7 +274,8 @@ def _conf_bad_ciphers():
 def ssl_ciphers(conf_ciphers):
     # create a set of ciphers we want to reject
     # let openssl expand the list of all the forbidden ones
-    forbidden_ciphers = set(_expand_ssl_ciphers(':'.join(conf_ciphers)))
+    forbidden_ciphers = set(
+        utils.expand_openssl_ciphers(':'.join(conf_ciphers)))
 
     if not os.path.exists(NGINX_CONFIG_PATH):
         return TestResult(Result.SKIP, "nginx config not found")
@@ -295,7 +291,7 @@ def ssl_ciphers(conf_ciphers):
     # check the default set in context 'http'
     default_ciphers = (_get_parameters(http, 'ssl_ciphers') or
                        ['HIGH:!aNULL:!MD5'])
-    default_ciphers = _expand_ssl_ciphers(default_ciphers[0])
+    default_ciphers = utils.expand_openssl_ciphers(default_ciphers[0])
 
     bad_default = list(set(default_ciphers) & forbidden_ciphers)
     if bad_default:
@@ -311,7 +307,7 @@ def ssl_ciphers(conf_ciphers):
         name = '/'.join(_get_parameters(server, 'server_name'))
         server_ciphers = _get_parameters(server, 'ssl_ciphers')
         if server_ciphers:
-            server_ciphers = _expand_ssl_ciphers(server_ciphers[0])
+            server_ciphers = utils.expand_openssl_ciphers(server_ciphers[0])
         else:
             server_ciphers = default_ciphers
 
