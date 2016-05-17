@@ -89,7 +89,7 @@ def _generate_config(filename, mode):
                 modules_config[test_mod][test['name']] = test_config
 
     config_content = json.dumps(new_config, separators=(',', ': '),
-                                indent=4)
+                                indent=4, sort_keys=True)
     if filename:
         with open(filename, "w") as f:
             f.write(config_content)
