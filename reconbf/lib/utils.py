@@ -466,3 +466,19 @@ def verify_config(config_name, config_lines, checked_options,
         return_results.append((test_name, TestResult(result, reason)))
 
     return return_results
+
+
+def expand_openssl_ciphers(description):
+    """Expand description to a list of SSL ciphers.
+
+    Openssl allows providing a list of ciphers as names disabling/enabling
+    specific encryption methods, or other attributes. For example
+      openssl ciphers 'MD5+RC4:!aNULL'
+    will expand to a list of ciphers using RC4 encryption with MD5 mac and
+    remove ciphers with no authentication.
+
+    This function will take a description like that and return an expanded list
+    of ciphers which match the definition.
+    """
+    result = subprocess.check_output(['openssl', 'ciphers', description])
+    return result.decode('ascii').split(':')
