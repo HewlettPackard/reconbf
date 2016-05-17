@@ -445,6 +445,9 @@ class GroupTestResult():
         """
         return self._results_list
 
+    def __len__(self):
+        return len(self._results_list)
+
 
 def _build_result_string(name, result, notes, use_color, term_colors, indent,
                          widths):

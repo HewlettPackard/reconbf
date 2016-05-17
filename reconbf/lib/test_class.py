@@ -1,6 +1,6 @@
 from .logger import logger
 from . import config
-from .result import TestResults, TestResult, Result
+from .result import TestResults, TestResult, Result, GroupTestResult
 from .. import modules
 
 import importlib
@@ -143,10 +143,19 @@ class TestSet():
             cur_result = {'name': test_name}
 
             # If the test actually ran...
-            if test_result:
-                # here the result can either be an individual result or a
-                # group result, in either case add it to the results list
+            if test_result is None:
+                cur_result['result'] = TestResult(
+                    Result.FAIL, "Test did not return result, internal error")
+            elif isinstance(test_result, TestResult):
+                # single result can be added to the list
                 cur_result['result'] = test_result
+            elif isinstance(test_result, GroupTestResult):
+                # if the group contains no results, report a skip
+                if len(test_result) == 0:
+                    cur_result['result'] = TestResult(
+                        Result.SKIP, "No specific results reported")
+                else:
+                    cur_result['result'] = test_result
             else:
                 # if the test either failed or never returned a result, make
                 # sure that's reported too
