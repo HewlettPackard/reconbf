@@ -272,13 +272,17 @@ def _conf_bad_ciphers():
     https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
     """)
 def ssl_ciphers(conf_ciphers):
-    # create a set of ciphers we want to reject
-    # let openssl expand the list of all the forbidden ones
-    forbidden_ciphers = set(
-        utils.expand_openssl_ciphers(':'.join(conf_ciphers)))
-
     if not os.path.exists(NGINX_CONFIG_PATH):
         return TestResult(Result.SKIP, "nginx config not found")
+
+    # create a set of ciphers we want to reject
+    # let openssl expand the list of all the forbidden ones
+    try:
+        forbidden_ciphers = set(
+            utils.expand_openssl_ciphers(':'.join(conf_ciphers)))
+    except Exception:
+        return TestResult(Result.SKIP,
+                          "Cannot use openssl to expand cipher list")
 
     try:
         config = _read_nginx_config('/etc/nginx/nginx.conf')

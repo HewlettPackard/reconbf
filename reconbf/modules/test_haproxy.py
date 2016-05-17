@@ -97,14 +97,18 @@ def _conf_bad_ciphers():
     https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
     """)
 def ssl_ciphers(test_config):
-    bad_ciphers_desc = ':'.join(test_config['bad_ciphers'])
-    bad_ciphers = set(utils.expand_openssl_ciphers(bad_ciphers_desc))
-    results = GroupTestResult()
-
     try:
         config = _read_config(test_config['configs'])
     except IOError:
         return TestResult(Result.SKIP, "haproxy config not found")
+
+    bad_ciphers_desc = ':'.join(test_config['bad_ciphers'])
+    try:
+        bad_ciphers = set(utils.expand_openssl_ciphers(bad_ciphers_desc))
+    except Exception:
+        return TestResult(Result.SKIP,
+                          "Cannot use openssl to expand cipher list")
+    results = GroupTestResult()
 
     # no need to check the options if haproxy doesn't handle ssl traffic
     frontends_with_ssl = set()

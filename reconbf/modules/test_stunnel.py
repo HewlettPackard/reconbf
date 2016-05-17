@@ -168,13 +168,17 @@ def _conf_bad_ciphers():
     https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
     """)
 def ssl_ciphers(test_config):
-    bad_ciphers_desc = ':'.join(test_config['bad_ciphers'])
-    bad_ciphers = set(utils.expand_openssl_ciphers(bad_ciphers_desc))
-    results = GroupTestResult()
-
     paths = glob.glob(test_config['configs'])
     if not paths:
         return TestResult(Result.SKIP, "No stunnel config found")
+
+    bad_ciphers_desc = ':'.join(test_config['bad_ciphers'])
+    try:
+        bad_ciphers = set(utils.expand_openssl_ciphers(bad_ciphers_desc))
+    except Exception:
+        return TestResult(Result.SKIP,
+                          "Cannot use openssl to expand cipher list")
+    results = GroupTestResult()
 
     for path in paths:
         config = _read_config(path)
