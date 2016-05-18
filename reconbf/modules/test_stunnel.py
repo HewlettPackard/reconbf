@@ -205,3 +205,51 @@ def ssl_ciphers(test_config):
                 results.add_result(test_name, TestResult(Result.PASS))
 
     return results
+
+
+def _conf_certificate_check():
+    return {
+        'configs': '/etc/stunnel/*.conf',
+        }
+
+
+@test_class.takes_config(_conf_certificate_check)
+@test_class.explanation("""
+    Protection name: Check certificates sanity.
+
+    Check: Validate a number of properties of the provided SSL
+    certificates. This includes the stock openssl verification
+    as well as custom.
+
+    Purpose: Certificates can be a weak point of an SSL
+    connection. This check validates some simple properties of
+    the provided certificate. This includes:
+    - 'openssl verify' validation
+    - signature algorithm blacklist
+    - key size check
+    """)
+def certificate_check(test_config):
+    paths = glob.glob(test_config['configs'])
+    if not paths:
+        return TestResult(Result.SKIP, "No stunnel config found")
+
+    results = GroupTestResult()
+
+    for path in paths:
+        config = _read_config(path)
+
+        for section in config:
+            cert_path = config[section].get('cert')
+            # do this check only on sections with configured certificates
+            if not cert_path:
+                continue
+
+            issues = utils.find_certificate_issues(cert_path)
+            test_name = "%s:%s" % (path, section)
+            if issues:
+                msg = "problem in %s: %s" % (cert_path, issues)
+                results.add_result(test_name, TestResult(Result.FAIL, msg))
+            else:
+                results.add_result(test_name, TestResult(Result.PASS))
+
+    return results
