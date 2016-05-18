@@ -7,6 +7,7 @@ from collections import defaultdict
 import glob
 import gzip
 import os
+import re
 import subprocess
 
 """
@@ -482,3 +483,41 @@ def expand_openssl_ciphers(description):
     """
     result = subprocess.check_output(['openssl', 'ciphers', description])
     return result.decode('ascii').split(':')
+
+
+RE_SIG_ALGO = re.compile(b"Signature Algorithm: (\S+)")
+RE_KEY_SIZE = re.compile(b"Public-Key: \(([0-9]+) bit\)")
+
+
+def find_certificate_issues(path, purpose='sslserver'):
+    """Verify certificate validity and sanity"""
+    try:
+        output = subprocess.check_output(['openssl', 'verify', '-x509_strict',
+                                          '-purpose', purpose, path])
+        if not output.strip().endswith(b": OK"):
+            return "openssl verification failed"
+    except OSError:
+        return "openssl could not be executed"
+    except subprocess.CalledProcessError:
+        return "openssl verification failed"
+
+    try:
+        description = subprocess.check_output(['openssl', 'x509', '-text',
+                                               '-noout', '-in', path])
+    except subprocess.CalledProcessError:
+        return "certificate parsing failed"
+
+    for line in description.splitlines():
+        line = line.strip()
+        m = RE_SIG_ALGO.match(line)
+        if m:
+            if m.group(1) in ('sha1WithRSAEncryption', 'md5WithRSAEncryption'):
+                return "weak signature algorithm"
+
+        m = RE_KEY_SIZE.match(line)
+        if m:
+            key_size = int(m.group(1))
+            if key_size < 2048:
+                return "key size < 2048 bits"
+
+    return None
