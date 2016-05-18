@@ -1,12 +1,12 @@
 from reconbf.lib import test_class
 from reconbf.lib import utils
+from reconbf.lib.logger import logger
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 
 import glob
 import os
-
 
 NGINX_CONFIG_PATH = "/etc/nginx/nginx.conf"
 
@@ -153,7 +153,18 @@ def _nginx_parse(tokens):
                         raise ParsingError("include option must be followed "
                                            "by one path, got %s" % statement)
                     else:
-                        for inc_path in glob.glob(statement[1]):
+                        if os.path.isabs(statement[1]):
+                            glob_str = statement[1]
+                        else:
+                            glob_str = os.path.join(
+                                os.path.dirname(NGINX_CONFIG_PATH),
+                                statement[1])
+                        inc_paths = glob.glob(glob_str)
+                        if not inc_paths:
+                            logger.warning("include name '%s' did not resolve "
+                                           "to any existing files",
+                                           statement[1])
+                        for inc_path in inc_paths:
                             for sub_statement in _read_nginx_config(inc_path):
                                 config.append(sub_statement)
 
