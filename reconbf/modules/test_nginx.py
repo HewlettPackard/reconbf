@@ -244,18 +244,11 @@ def ssl_protos(bad_protos):
     default_protos = (_get_parameters(http, 'ssl_protocols') or
                       ['TLSv1', 'TLSv1.1', 'TLSv1.2'])
 
-    forbidden = list(set(default_protos) & bad_protos)
-    if forbidden:
-        res = TestResult(
-            Result.FAIL,
-            "nginx defaults to allowing banned protocols: %s" %
-            ','.join(forbidden))
-    else:
-        res = TestResult(Result.PASS, "nginx defaults to secure protocols")
-    results.add_result("http section", res)
-
     # check each server separately
     for server in _config_iter_servers(http):
+        if not _server_enables_ssl(server):
+            continue
+
         name = '/'.join(_get_parameters(server, 'server_name'))
         server_protos = (_get_parameters(server, 'ssl_protocols') or
                          default_protos)
@@ -318,17 +311,11 @@ def ssl_ciphers(conf_ciphers):
                        ['HIGH:!aNULL:!MD5'])
     default_ciphers = utils.expand_openssl_ciphers(default_ciphers[0])
 
-    bad_default = list(set(default_ciphers) & forbidden_ciphers)
-    if bad_default:
-        res = TestResult(Result.FAIL,
-                         "nginx defaults to weak ciphers (%s)" %
-                         ",".join(bad_default))
-    else:
-        res = TestResult(Result.PASS, "nginx defaults to secure ciphers")
-    results.add_result("http section", res)
-
     # check each server separately
     for server in _config_iter_servers(http):
+        if not _server_enables_ssl(server):
+            continue
+
         name = '/'.join(_get_parameters(server, 'server_name'))
         server_ciphers = _get_parameters(server, 'ssl_ciphers')
         if server_ciphers:
