@@ -207,6 +207,16 @@ def _get_section(conf, section):
     return None
 
 
+def _server_enables_ssl(conf):
+    for statement in conf:
+        if statement[0] == 'listen':
+            if 'ssl' in statement[1:]:
+                return True
+        elif statement[0] == 'ssl' and statement[1] == 'on':
+            return True
+    return False
+
+
 def _conf_bad_protos():
     return ['SSLv2', 'SSLv3']
 
@@ -333,6 +343,63 @@ def ssl_ciphers(conf_ciphers):
                              ",".join(bad_ciphers))
         else:
             res = TestResult(Result.PASS, "")
+        results.add_result("server %s" % name, res)
+
+    return results
+
+
+@test_class.explanation("""
+    Protection name: Check certificates sanity.
+
+    Check: Validate a number of properties of the provided SSL
+    certificates. This includes the stock openssl verification
+    as well as custom.
+
+    Purpose: Certificates can be a weak point of an SSL
+    connection. This check validates some simple
+    properties of
+    the provided certificate. This includes:
+    - 'openssl verify' validation
+    - signature algorithm blacklist
+    - key size check
+    """)
+def ssl_cert():
+    if not os.path.exists(NGINX_CONFIG_PATH):
+        return TestResult(Result.SKIP, "nginx config not found")
+
+    try:
+        config = _read_nginx_config('/etc/nginx/nginx.conf')
+    except (ParsingError, IOError):
+        return TestResult(Result.FAIL, "could not parse nginx config")
+
+    http = _get_section(config, 'http')
+    results = GroupTestResult()
+
+    default_certificate = _get_parameters(http, 'ssl_certificate')
+    if default_certificate:
+        default_issues = utils.find_certificate_issues(default_certificate)
+
+    for server in _config_iter_servers(http):
+        if not _server_enables_ssl(server):
+            continue
+
+        name = '/'.join(_get_parameters(server, 'server_name'))
+        certificate = _get_parameters(server, 'ssl_certificate')
+
+        if certificate:
+            issues = utils.find_certificate_issues(certificate[0])
+        elif default_certificate:
+            issues = default_issues
+
+        if certificate or default_certificate:
+            if issues:
+                res = TestResult(
+                    Result.FAIL,
+                    "certificate %s invalid: %s" % (certificate[0], issues))
+            else:
+                res = TestResult(Result.PASS, "ssl certificate ok")
+        else:
+            res = TestResult(Result.FAIL, "ssl certificate not configured")
         results.add_result("server %s" % name, res)
 
     return results
