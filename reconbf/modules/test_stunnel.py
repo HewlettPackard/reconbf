@@ -1,5 +1,6 @@
 from reconbf.lib import test_class
 from reconbf.lib import utils
+from reconbf.lib.logger import logger
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
@@ -7,10 +8,6 @@ from reconbf.lib.result import TestResult
 import collections
 import glob
 import os
-import logging
-
-
-logger = logging.getLogger(__name__)
 
 
 def _read_config(path, config=collections.defaultdict(dict), section=None):
