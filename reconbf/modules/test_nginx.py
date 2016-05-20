@@ -176,6 +176,7 @@ def _nginx_parse(tokens):
             statement.append(tok)
 
 
+@utils.idempotent
 def _read_nginx_config(path):
     with open(path, 'r') as f:
         config = f.read()
