@@ -170,10 +170,7 @@ class TestResults:
                             widths
                         ))
 
-                if res['result'].failed:
-                    parent_result = Result.FAIL
-                else:
-                    parent_result = Result.PASS
+                parent_result = res['result'].result
 
                 # check if we should display the parent result based on the
                 # settings
@@ -204,7 +201,7 @@ class TestResults:
                 if result['result'] == Result.FAIL:
                     return True
             elif isinstance(result['result'], GroupTestResult):
-                if result['result'].failed:
+                if result['result'].result == Result.FAIL:
                     return True
         return False
 
@@ -405,7 +402,7 @@ class GroupTestResult():
     # GroupTestResult is a list of dicts with name and TestResult
     def __init__(self):
         self._results_list = list()
-        self._failed = False
+        self._group_result = Result.SKIP
 
     def add_result(self, name, result):
         """Add a new result to the group test results list
@@ -418,18 +415,20 @@ class GroupTestResult():
         new_result['name'] = name
         new_result['result'] = result
 
-        if result.result == Result.FAIL:
-            self._failed = True
+        if result.result == Result.PASS and self._group_result == Result.SKIP:
+            self._group_result = Result.PASS
+        elif result.result == Result.FAIL:
+            self._group_result = Result.FAIL
 
         self._results_list.append(new_result)
 
     @property
-    def failed(self):
-        """Property to return whether the group test failed
+    def result(self):
+        """Property to return the status of the whole group
 
-        :returns: Boolean indicating failure
+        :returns: Result
         """
-        return self._failed
+        return self._group_result
 
     @property
     def results(self):
