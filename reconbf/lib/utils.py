@@ -26,13 +26,13 @@ def check_path_exists(path):
     :param path: The path to check
     :returns: True or False
     """
-    logger.debug("Testing for existence of path { " + path + " }")
+    logger.debug("Testing for existence of path { %s }", path)
 
     return_value = os.path.exists(path)
     if return_value:
-        logger.debug("Path [ {} ] exists".format(path))
+        logger.debug("Path [ %s ] exists", path)
     else:
-        logger.debug("Path [ {} ] doesn't exist".format(path))
+        logger.debug("Path [ %s ] doesn't exist", path)
 
     return return_value
 
@@ -67,12 +67,12 @@ def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     """
     return_list = None
 
-    logger.debug("Listing files from directory [ {} ] ".format(base_path))
+    logger.debug("Listing files from directory [ %s ] ", base_path)
 
     if not check_path_exists(base_path):
         pass
     elif not os.path.isdir(base_path):
-        logger.debug("Path [ {} ] is not a directory".format(base_path))
+        logger.debug("Path [ %s ] is not a directory", base_path)
     else:
         # we have a directory, get all the files from it
         return_list = []
@@ -98,7 +98,7 @@ def get_sysctl_value(path):
     :param path: The path relative to base sysctl of the setting to retrieve
     :returns: The value of the specified sysctl setting
     """
-    logger.debug("Testing for sysctl value [ {} ] ".format(path))
+    logger.debug("Testing for sysctl value [ %s ] ", path)
 
     # load sysctl_path from config if possible, otherwise grab default
     sysctl_path = config.get_config("paths.sysctl_path", constants.SYSCTL_PATH)
@@ -110,14 +110,13 @@ def get_sysctl_value(path):
         with open(file_path, 'r') as sysctl_file:
             value = sysctl_file.readline().strip()
     except IOError:
-        logger.warning("Sysctl path [ {} ] not found".format(file_path))
+        logger.warning("Sysctl path [ %s ] not found", file_path)
         raise ValNotFound
     except EnvironmentError:
-        logger.debug("Unable to read sysctl value [ {} ]".
-                     format(file_path))
+        logger.debug("Unable to read sysctl value [ %s ]", file_path)
         raise ValNotFound
     else:
-        logger.debug("Value found: [ {} ] ".format(value))
+        logger.debug("Value found: [ %s ] ", value)
 
     return value
 
@@ -135,7 +134,7 @@ def running_processes():
         try:
             exe = os.path.realpath('/proc/{}/exe'.format(pid))
         except OSError:
-            logger.debug("Unable to locate exe for [ {} ]".format(pid))
+            logger.debug("Unable to locate exe for [ %s ]", pid)
         procs.append((pid, exe))
 
     return procs
@@ -289,8 +288,7 @@ def config_search(config_lines, config_descriptor, comment_delims=['#'],
         option = config_descriptors[1]
 
     else:
-        logger.error('Malformed config descriptor: [ {} ]'.
-                     format(config_descriptor))
+        logger.error('Malformed config descriptor: [ %s ]', config_descriptor)
         return None
 
     try:
@@ -312,7 +310,7 @@ def have_command(cmd):
         return rc == 0
 
     except subprocess.CalledProcessError:
-        logger.debug("{} not on $PATH".format(cmd))
+        logger.debug("%s not on $PATH", cmd)
 
     return False
 
