@@ -69,10 +69,12 @@ def _elf_syms(path):
     return _safe_exec(['readelf', '-s', path])
 
 
+@utils.idempotent
 def _elf_dynamic(path):
     return _safe_exec(['readelf', '-d', path])
 
 
+@utils.idempotent
 def _elf_prog_headers(path):
     return _safe_exec(['readelf', '-W', '-l', path])
 
@@ -239,7 +241,8 @@ def _extract_symbols(cmd):
         logger.debug(err)
 
 
-def _symbols_in_dynsym(path, _cache={}):
+@utils.idempotent
+def _symbols_in_dynsym(path):
     """Generator to return all the symbols within an ELF executable dynsym
     section. These results will only include the symbols needed for
     dynamic linking at runtime. This section will exists even when the
@@ -252,11 +255,7 @@ def _symbols_in_dynsym(path, _cache={}):
     :returns: Generator the yields the symbols in the .dynsym section
               of the ELF binary.
     """
-    result = _cache.get(path)
-    if result is None:
-        result = _extract_symbols(['nm', '-D', path])
-        _cache[path] = result
-    return result
+    return _extract_symbols(['nm', '-D', path])
 
 
 def _check_policy(context, policy, actual, results):

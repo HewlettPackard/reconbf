@@ -10,7 +10,7 @@ import glob
 import os
 
 
-def _read_config(path, config=collections.defaultdict(dict), section=None):
+def _do_read_config(path, config=collections.defaultdict(dict), section=None):
     with open(path, 'r') as f:
         conf_lines = f.readlines()
 
@@ -55,6 +55,11 @@ def _read_config(path, config=collections.defaultdict(dict), section=None):
             config[section][key] = val
 
     return config
+
+
+@utils.idempotent
+def _read_config(path):
+    return _do_read_config(path)
 
 
 def _merge_options(current, new):

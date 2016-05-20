@@ -9,6 +9,7 @@ import gzip
 import os
 import re
 import subprocess
+import functools
 
 """
 This module is where utility functions which are generally useful to tests
@@ -469,6 +470,37 @@ def verify_config(config_name, config_lines, checked_options,
     return return_results
 
 
+def idempotent(f):
+    """Cache the result of a function.
+
+    Mark a function as idempotent. Its results will be cached for a given set
+    of arguments. All future calls with the same arguments will be returned
+    from cache.
+
+    It's up to developers to guarantee that:
+    - the result of an idempotent function is not changed in place (it will
+      corrupt the cache)
+    - all the arguments can be hashed
+    """
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        # create immutable versions of argument list
+        ikwargs = tuple(sorted(kwargs.items()))
+        cache_key = (args, ikwargs)
+
+        cache = getattr(f, "_cache", {})
+        if cache_key in cache:
+            return cache[cache_key]
+
+        res = f(*args, **kwargs)
+        cache[cache_key] = res
+        f._cache = cache
+        return res
+
+    return wrapper
+
+
+@idempotent
 def expand_openssl_ciphers(description):
     """Expand description to a list of SSL ciphers.
 
