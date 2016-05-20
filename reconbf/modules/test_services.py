@@ -213,27 +213,23 @@ def _check_valid_req(req):
     # if the requirement does not contain all required fields
     if(not req['services'] or not req['expected'] or not req['match'] or
             not req['fail']):
-        logger.error("Service requirement missing required field: {}".
-                     format(req))
+        logger.error("Service requirement missing required field: %s", req)
         return None
 
     # check correct values for requirement
     elif type(req['services']) != list:
-        logger.error("Expected list of services: " + req)
+        logger.error("Expected list of services: %s", req)
         return None
 
     elif req['expected'] not in ['on', 'off']:
-        logger.error("Expected value of 'on' or 'off' for 'expected': {}".
-                     format(req))
+        logger.error("Expected value of 'on' or 'off' for 'expected': %s", req)
         return None
 
     elif req['match'] not in ['all', 'one']:
-        logger.error("Expected value of 'all' or 'one' for 'match': {}".
-                     format(req))
+        logger.error("Expected value of 'all' or 'one' for 'match': %s", req)
 
     elif req['fail'] not in ['True', 'False']:
-        logger.error("Expected value of 'True' or 'False' for 'fail': {}".
-                     format(req))
+        logger.error("Expected value of 'True' or 'False' for 'fail': %s", req)
 
     else:
         return True
@@ -308,15 +304,15 @@ def _validate_svc_cfg_list(reqs_list):
         # if the config check doesn't have 'name', it isn't valid, don't add
         if 'name' not in config or not isinstance(config['name'],
                                                   (type(u''), type(''))):
-            logger.error("Service config requirement must have a 'name': {}".
-                         format(config))
+            logger.error("Service config requirement must have a 'name': %s",
+                         config)
             continue
 
         # if the config check doesn't have 'config', it isn't valid, don't add
         if ('config' not in config or
                 not isinstance(config['config'], (type(u''), type('')))):
-            logger.error("Service config requirement must have a 'config': {}".
-                         format(config))
+            logger.error("Service config requirement must have a 'config': %s",
+                         config)
             continue
 
         # have we seen something in this config that makes it invalid?
@@ -334,20 +330,18 @@ def _validate_svc_cfg_list(reqs_list):
                 # make sure that the config contains a dict
                 if type(config[config_value]) != dict:
 
-                    logger.error("{}: Expected a dictionary of 'allowed/"
-                                 "disallowed' values, got: {}".
-                                 format(config['name'],
-                                        type(config[config_value])))
+                    logger.error("%s: Expected a dictionary of 'allowed/"
+                                 "disallowed' values, got: %s",
+                                 config['name'], type(config[config_value]))
                     continue
 
                 # make sure one of 'allowed' or 'disallowed' are present
                 if("allowed" not in config[config_value] and
                         "disallowed" not in config[config_value]):
 
-                    logger.error("{}: Expected 'allowed or disallowed setting "
-                                 "in {}".
-                                 format(config['name'],
-                                        config['config_value']))
+                    logger.error("%s: Expected 'allowed or disallowed setting "
+                                 "in %s",
+                                 config['name'], config['config_value'])
                     continue
 
                 # ensure that each option requirement has allowed or disallowed
@@ -359,9 +353,8 @@ def _validate_svc_cfg_list(reqs_list):
                     # disallowed, then it's an improper entry
                     if check not in ["allowed", "disallowed"]:
 
-                        logger.error("{}: Expect only 'allowed or disallowed' "
-                                     "{}".
-                                     format(config['name'], check_value))
+                        logger.error("%s: Expect only 'allowed or disallowed' "
+                                     "%s", config['name'], check_value)
                         valid_config = False
 
                     # if the values for the "allowed" and "disallowed" aren't
@@ -369,9 +362,9 @@ def _validate_svc_cfg_list(reqs_list):
                     elif not (type(check_value) == list or
                               check_value == "*"):
 
-                            logger.error("{} Value must be a '*' or a list of "
-                                         "strings, got: {}".
-                                         format(config['name'], check_value))
+                            logger.error("%s Value must be a '*' or a list of "
+                                         "strings, got: %s",
+                                         config['name'], check_value)
                             valid_config = False
 
         if valid_config:

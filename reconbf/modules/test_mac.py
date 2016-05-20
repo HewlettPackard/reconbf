@@ -58,9 +58,9 @@ def test_selinux():
         else:
             # wth?
             logger.debug("Unexpected error while looking for SELinux: "
-                         "    Standard Output from sestatus command: [{}]"
-                         "    Standard Error from sestatus command: [{}]".
-                         format(stdout, stderr))
+                         "    Standard Output from sestatus command: [%s]"
+                         "    Standard Error from sestatus command: [%s]",
+                         stdout, stderr)
             return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     except EnvironmentError as e:
@@ -118,14 +118,13 @@ def test_apparmor():
         else:
             # wth?
             logger.debug("Unexpected error while looking for AppArmor: "
-                         "    Standard Output from sestatus command: [{}]"
-                         "    Standard Error from sestatus command: [{}]".
-                         format(stdout, stderr))
+                         "    Standard Output from sestatus command: [%s]"
+                         "    Standard Error from sestatus command: [%s]",
+                         stdout, stderr)
             return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     except EnvironmentError as e:
-        logger.debug("Unexpected error running apparmor_status: [{}]".
-                     format(e))
+        logger.debug("Unexpected error running apparmor_status: [%s]", e)
         return_result = TestResult(Result.SKIP, notes="Unexpected error.")
 
     return return_result
