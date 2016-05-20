@@ -34,13 +34,12 @@ class Config:
                 json_data = json.load(json_file)
 
         except EnvironmentError:
-            logger.error("Unable to open config file [ {} ] ".
-                         format(config_file))
+            logger.error("Unable to open config file [ %s ]", config_file)
             sys.exit(2)
 
         except ValueError:
-            logger.error("File [ {} ] does not appear to be valid JSON.".
-                         format(config_file))
+            logger.error("File [ %s ] does not appear to be valid JSON.",
+                         config_file)
             sys.exit(2)
 
         else:
@@ -68,8 +67,7 @@ class Config:
                 cur_item = cur_item[level]
             else:
                 if default is _no_default:
-                    logger.info("Unable to get config value: {}".
-                                format(config_path))
+                    logger.info("Unable to get config value: %s", config_path)
                     raise ConfigNotFound()
                 else:
                     return default

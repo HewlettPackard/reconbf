@@ -116,9 +116,9 @@ class TestSet():
                 try:
                     conf = config.get_config('modules.' + test_name)
                 except config.ConfigNotFound:
-                    logger.error("Test [ {} ] requires config but could"
-                                 "not be found.  Skipping...".
-                                 format(test_name))
+                    logger.error("Test [ %s ] requires config but could"
+                                 "not be found.  Skipping...",
+                                 test_name)
                 else:
                     # if the config is not available, use defaults
                     if conf is None and fn.config_generator is not None:
@@ -127,17 +127,15 @@ class TestSet():
                     try:
                         test_result = fn(conf)
                     # catch anything that goes wrong with a test
-                    except Exception as e:
-                        logger.exception("Exception in test [ {} ]".
-                                         format(test_name, e))
+                    except Exception:
+                        logger.exception("Exception in test [ %s ]", test_name)
 
             else:
                 try:
                     test_result = fn()
                 # catch anything that goes wrong with a test
-                except Exception as e:
-                    logger.exception("Exception in test [ {} ]: {}".
-                                     format(test_name, e))
+                except Exception:
+                    logger.exception("Exception in test [ %s ]", test_name)
 
             # Name and result class are added
             cur_result = {'name': test_name}
@@ -182,8 +180,7 @@ class TestSet():
             script_f.close()
 
         except IOError:
-            logger.error("Unable to open script file [ {} ]".
-                         format(script_file))
+            logger.error("Unable to open script file [ %s ]", script_file)
             return False
 
         else:
@@ -192,12 +189,11 @@ class TestSet():
                 # and add it
                 test = self._find_test_by_can_name(line.strip())
                 if not test:
-                    logger.error("Unable to find test: [ {} ]".
-                                 format(line.strip('\n')))
+                    logger.error("Unable to find test: [ %s ]", line.strip())
                     sys.exit(2)
                 new_test_set.append(test)
 
-        logger.info("Loaded script [ {} ]".format(script_file))
+        logger.info("Loaded script [ %s ]", script_file)
         self._tests = new_test_set
         return True
 
@@ -212,8 +208,7 @@ class TestSet():
 
         # if we don't have a well-formed canonical name, don't try to find it
         if len(module_ids) != 2:
-            logger.error("Malformed script line: [ {} ]".
-                         format(module_str))
+            logger.error("Malformed script line: [ %s ]", module_str)
             return None
 
         for test in self._tests:
