@@ -234,8 +234,7 @@ def _extract_symbols(cmd):
 
                 yield (sym_addr, sym_type, sym_name.split(b'@@')[0])
             except ValueError as err:
-                logger.debug('Unexpected output [ {} ]'.format(
-                    entry.strip()))
+                logger.debug('Unexpected output [ %s ]', entry.strip())
 
     except subprocess.CalledProcessError as err:
         logger.debug(err)

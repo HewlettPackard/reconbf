@@ -168,7 +168,7 @@ def test_sysctl_values(sysctl_reqs):
                                    TestResult(cur_result, notes=notes))
 
             else:
-                logger.info("Got malformed requirement {}".format(requirement))
+                logger.info("Got malformed requirement %s", requirement)
     return results
 
 
@@ -206,8 +206,7 @@ def test_certs():
             p = Popen(['openssl', 'verify', cert], stdout=PIPE, shell=False)
             stdout = p.communicate()
             if b"OK" in stdout[0]:
-                logger.debug("Certificate verification success for: {}".
-                             format(cert))
+                logger.debug("Certificate verification success for: %s", cert)
                 if result is None:
                     result = Result.PASS
             else:
@@ -216,12 +215,10 @@ def test_certs():
                     notes += "Error validating certificate: " + cert
                 else:
                     notes += ", " + cert
-                logger.debug("Certificate verification failure for: {}".
-                             format(cert))
+                logger.debug("Certificate verification failure for: %s", cert)
 
-        except ValueError as e:
-            notes = "Error running 'openssl verify " + cert + "'"
-            logger.debug("{}. \n   Error: {}".format(notes, e))
+        except ValueError:
+            logger.exception("Error running 'openssl verify %s'", cert)
             result = Result.SKIP
 
     logger.debug("Completed on-system certificate validation tests.")

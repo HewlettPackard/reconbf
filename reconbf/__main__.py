@@ -49,7 +49,7 @@ def main():
     test_set = TestSet()
     added = test_set.add_known_tests(
         config.get_configured_modules())
-    logger.info("Loaded [ {} ] tests".format(added))
+    logger.info("Loaded [ %s ] tests", added)
 
     results = test_set.run()
     display_mode = _get_display_type(args.display_mode)
@@ -150,7 +150,7 @@ def _output_report(results, report_type, report_file, display_mode=None):
             templates_dir = 'templates'
 
             html_template = templates_dir + '/' + html_template
-            logger.info("Using template from {}".format(html_template))
+            logger.info("Using template from %s", html_template)
             results.write_html(report_file, html_template, display_mode)
 
 
