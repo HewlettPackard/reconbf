@@ -3,7 +3,6 @@ Sensible defaults are listed here, so that RBF can function even in the case
 that they aren't specified in the config file.
 """
 
-CSV_SEPARATOR = '|'
 LOG_NAME = 'root'
 LOG_FMT = '%(asctime)s %(levelname)7s: %(message)s - (%(filename)s:%(lineno)d)'
 MAX_LINE_LENGTH = 200

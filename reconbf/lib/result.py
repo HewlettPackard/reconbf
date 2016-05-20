@@ -2,6 +2,7 @@ from .logger import logger
 from . import config
 from . import constants
 
+import csv
 import json
 import subprocess
 
@@ -208,9 +209,9 @@ class TestResults:
                     return True
         return False
 
-    def write_csv(self, filename, separator_char=constants.CSV_SEPARATOR):
-        """Create a CSV file in the specified location with an optionally
-        specified separator, default: '|'
+    def write_csv(self, filename):
+        """Create a CSV file in the specified location using the common
+        format (separator ',' and quoting using ").
 
         The fields are test name, result, and notes
 
@@ -218,38 +219,39 @@ class TestResults:
         and finally successes(?)
 
         :param filename: The file to write
-        :param separator_char: (optional) Separator character for fields
         :return: -
         """
         logger.info("Preparing to write CSV file [ {} ] ".format(filename))
 
-        # TODO(tmcpeak): Fix write CSV to use a real CSV library
-        # TODO(tmcpeak): Fix write CSV to reflect new results list structure
-
         # Create the header row
-        header_row_items = ['Test', 'Result', 'Notes']
-        header_row = separator_char.join(map(str, header_row_items))
+        header_row_items = ['Test', 'Subtest', 'Result', 'Notes']
 
-        rows = list()
+        rows = []
 
         # display any errors first
 
         for test_result in self._results:
-            cur_row = list()
-            cur_row.append(test_result['name'])
-            cur_row.append(test_result['result'])
-            if 'notes' in test_result:
-                cur_row.append(test_result['notes'])
+            if isinstance(test_result['result'], GroupTestResult):
+                for sub_result in test_result['result'].results:
+                    rows.append([
+                        test_result['name'],
+                        sub_result['name'],
+                        _result_text(sub_result['result'].result),
+                        sub_result['result'].notes,
+                        ])
             else:
-                cur_row.append("")
-            rows.append(cur_row)
+                rows.append([
+                    test_result['name'],
+                    None,
+                    _result_text(test_result['result'].result),
+                    test_result['result'].notes,
+                    ])
 
         try:
             with open(filename, 'w') as csv_output:
-                csv_output.write(header_row + "\n")
-                for row in rows:
-                    line = separator_char.join(map(str, row))
-                    csv_output.write(line + "\n")
+                writer = csv.writer(csv_output)
+                writer.writerow(header_row_items)
+                writer.writerows(rows)
 
         except EnvironmentError:
             logger.info("Unable to open CSV file [ %s ] for writing", filename)
