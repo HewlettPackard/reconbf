@@ -3,6 +3,7 @@ from . import config
 from . import constants
 
 import json
+import subprocess
 
 """
 Several classes are defined in this module:
@@ -104,9 +105,11 @@ class TestResults:
         """
 
         term_colors = _get_term_colors()
+        term_width = _get_term_width()
 
-        # TODO(tmcpeak): add some way of specifying a wider terminal
-        widths = {'TEST_NAME': 60, 'TEST_RESULT': 10, 'TOTAL': 80}
+        widths = {'TEST_NAME': 60, 'TEST_RESULT': 10, 'TOTAL': term_width}
+        notes_width = (widths['TOTAL'] - widths['TEST_NAME'] -
+                       widths['TEST_RESULT'])
 
         # used when a test name is longer than the name field, have
         # supporting details on the next line to make output nicer
@@ -132,8 +135,8 @@ class TestResults:
 
                     # truncate notes to not overwhelm output
                     notes = res['result'].notes
-                    if notes and len(notes) > 100:
-                        notes = notes[0:97] + '...'
+                    if notes and len(notes) > notes_width:
+                        notes = notes[0:notes_width - 3] + '...'
 
                     result_string = _build_result_string(res['name'],
                                                          res['result'].result,
@@ -157,8 +160,8 @@ class TestResults:
 
                         # truncate notes to not overwhelm output
                         notes = child_res['result'].notes
-                        if notes and len(notes) > 100:
-                            notes = notes[0:97] + '...'
+                        if notes and len(notes) > notes_width:
+                            notes = notes[0:notes_width - 3] + '...'
 
                         child_results.append(_build_result_string(
                             child_res['name'],
@@ -581,6 +584,29 @@ def _get_term_colors():
         term_colors[color] = "\033[" + term_colors[color].split('[')[1]
 
     return term_colors
+
+
+def _get_term_width():
+    # try to get the width from stty (option columns)
+    try:
+        term_settings = subprocess.check_output(['stty', '--all'])
+
+    except (IOError, subprocess.CalledProcessError):
+        # stty is not installed, or failed: assume 80 columns
+        return 80
+
+    for line in term_settings.splitlines():
+        for setting in line.split(b';'):
+            try:
+                option, value = setting.strip().split(b' ', 1)
+                if option.strip() == b'columns':
+                    return int(value.strip())
+            except ValueError:
+                # unexpected format
+                continue
+
+    # no columns setting found in the output, so default to 80
+    return 80
 
 
 def _result_text(result):
