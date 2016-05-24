@@ -8,13 +8,7 @@ from reconbf.lib import utils
 
 
 def _conf_test_running_services():
-    return [{"name": "Running firewall service",
-             "services": ["iptables", "ufw"],
-             "expected": "on",
-             "match": "one",
-             "fail": "True"},
-
-            {"name": "Not running unencrypted services",
+    return [{"name": "Not running unencrypted services",
              "services": ["ftp", "telnetd", "vsftpd"],
              "expected": "off",
              "match": "all",
