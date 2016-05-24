@@ -116,7 +116,7 @@ class TestSet():
                 try:
                     conf = config.get_config('modules.' + test_name)
                 except config.ConfigNotFound:
-                    logger.error("Test [ %s ] requires config but could"
+                    logger.error("Test [ %s ] requires config but could "
                                  "not be found.  Skipping...",
                                  test_name)
                 else:
