@@ -251,10 +251,9 @@ def _symbols_in_dynsym(path):
     :param _cache: Cache for results. We don't expect binaries to change
         mid-run.
 
-    :returns: Generator the yields the symbols in the .dynsym section
-              of the ELF binary.
+    :returns: List of the symbols in the .dynsym section of the ELF binary.
     """
-    return _extract_symbols(['nm', '-D', path])
+    return list(_extract_symbols(['nm', '-D', path]))
 
 
 def _check_policy(context, policy, actual, results):
