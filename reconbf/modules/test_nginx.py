@@ -391,3 +391,45 @@ def ssl_cert():
         results.add_result("server %s" % name, res)
 
     return results
+
+
+@test_class.explanation("""
+    Protection name: Don't advertise version.
+
+    Check: Verify that none of the servers advertises the
+    nginx version in the result.
+
+    Purpose: While hiding the version does not make nginx
+    any more secure, it can result in less exposure.
+    Specifically, if the server version is not immediately
+    available from indexes like shodan.io, it's less likely
+    to be directly targetted when specific versions are
+    vulnerable.
+    To stop advertising version, set "server_tokens off".
+    """)
+def version_advertise():
+    if not os.path.exists(NGINX_CONFIG_PATH):
+        return TestResult(Result.SKIP, "nginx config not found")
+
+    try:
+        config = _read_nginx_config('/etc/nginx/nginx.conf')
+    except (ParsingError, IOError):
+        return TestResult(Result.FAIL, "could not parse nginx config")
+
+    http = _get_section(config, 'http')
+    results = GroupTestResult()
+
+    default_tokens = _get_parameters(http, 'server_tokens') or 'on'
+
+    for server in _config_iter_servers(http):
+        name = '/'.join(_get_parameters(server, 'server_name'))
+        tokens = _get_parameters(server, 'server_tokens')
+
+        if (tokens or default_tokens) == 'on':
+            res = TestResult(Result.FAIL,
+                             "version is advertised (server_tokens)")
+        else:
+            res = TestResult(Result.PASS, "custom or hidden version")
+        results.add_result("server %s" % name, res)
+
+    return results
