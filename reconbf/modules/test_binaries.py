@@ -202,11 +202,19 @@ def _check_fortify(path):
 
     fortified = set([])
     for addr, sym, name in _symbols_in_dynsym(libc):
-        if sym == b'T' and name.endswith(b'_chk'):
+        if sym in (b'T', b'i') and name.endswith(b'_chk'):
             fortified.add(name)
+    plain = set(name[2:-4] for name in fortified)
 
     symbols = set([name for addr, sym, name in _symbols_in_dynsym(path)])
-    return len(symbols.intersection(fortified)) > 0
+    if len(symbols.intersection(fortified)) > 0:
+        return True
+
+    # if there are no functions to fortify, treat it the same as fortified
+    if len(symbols.intersection(plain)) == 0:
+        return True
+
+    return False
 
 
 def _extract_symbols(cmd):
