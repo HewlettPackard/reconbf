@@ -224,6 +224,15 @@ def listening_executables():
     return sorted(executables)
 
 
+def config_get(config, option):
+    if isinstance(option, (list, tuple)):
+        for x in option[:-1]:
+            config = config.get(x, {})
+        return config.get(option[-1])
+    else:
+        return config.get(option)
+
+
 def config_search(config_lines, config_descriptor, comment_delims=['#'],
                   keyval_delim=' '):
     """Find the option value specified by config_descriptor in config provided
@@ -382,9 +391,9 @@ def kconfig_option(option, config=None):
             return val.strip()
 
 
-def verify_config(config_name, config_lines, checked_options,
+def verify_config(config_name, config, checked_options, needs_parsing=True,
                   keyval_delim=' '):
-    """Verify the given config lines against the following rules described by
+    """Verify the given config against the following rules described by
     the checked_options parameter:
 
     - keys represent options names in the config file
@@ -394,12 +403,26 @@ def verify_config(config_name, config_lines, checked_options,
     - options with "disallowed" options must not contain listed values
     - options with "disallowed": "*" must not be present at all
     - otherwise, they're allowed to be missing
+
+    This function has two modes:
+    needs_parsing=True:
+    - config is a list of lines to be parsed using keyval_delim as separator.
+    - options are specified by strings which are split by '.' to separate the
+      section and option names
+
+    needs_parsing=False:
+    - config is a dictionary of options or other dictionaries (sections)
+    - options are specified by the name string, or a sequence of name strings
+      defining the section(s) and the option
     """
     return_results = []
 
     for option in checked_options:
-        option_value = config_search(config_lines, option,
-                                     keyval_delim=keyval_delim)
+        if needs_parsing:
+            option_value = config_search(config, option,
+                                         keyval_delim=keyval_delim)
+        else:
+            option_value = config_get(config, option)
 
         test_name = "{}: '{}'".format(config_name, option)
 
