@@ -52,7 +52,11 @@ def test_shellshock(config):
 
 
 def _conf_test_sysctl_values():
-    return [{"name": "TCP Syncookie protection",
+    return [{"name": "Suid coredump handling",
+             "key": "fs/suid_dumpable",
+             "allowed_values": "0, 2"},
+
+            {"name": "TCP Syncookie protection",
              "key": "net/ipv4/tcp_syncookies",
              "allowed_values": "1"},
 
