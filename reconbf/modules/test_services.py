@@ -1,4 +1,3 @@
-import os
 from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
 from reconbf.lib.result import GroupTestResult
@@ -108,48 +107,6 @@ def test_service_config(svccfg_reqs):
             # add all the results returned from the check function
             for name, result in returned_results:
                 results.add_result(name, result)
-
-    return results
-
-
-@test_class.explanation(
-    """
-    Protection name: Running processes have corresponding binaries
-
-    Check: Checks that each process running on the system was started from a
-    file which still exists on the disk.
-
-    Purpose: Usually every running process will have the corresponding
-    executable file available all the time. Anything different is a very
-    uncommon situation. It can happen for example because: file was deleted on
-    purpose to avoid detection, package has been upgraded but the process was
-    not restarted (potentially still vulnerable), etc.
-    """)
-def test_processes_have_corresponding_files():
-    missing = []
-    if not os.path.exists('/proc'):
-        return TestResult(Result.SKIP, "/proc filesystem not found")
-
-    for pid in os.listdir('/proc'):
-        if not pid.isdigit():
-            continue
-
-        try:
-            exe = os.readlink(os.path.join('/proc', pid, 'exe'))
-        except OSError:
-            # files in /proc can disappear at any point, just ignore errors
-            continue
-
-        if exe.endswith(' (deleted)'):
-            missing.append("pid %s, %s" % (pid, exe[:-10]))
-
-    if not missing:
-        return TestResult(Result.PASS, "All binaries present")
-
-    results = GroupTestResult()
-    for msg in missing:
-        results.add_result(msg, TestResult(Result.FAIL, "Corresponding binary "
-                                           "file replaced or missing"))
 
     return results
 
