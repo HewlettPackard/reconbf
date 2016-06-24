@@ -111,7 +111,11 @@ def _conf_test_sysctl_values():
              "allowed_values": "2"},
 
             {"key": "kernel/exec-shield",
-                    "allowed_values": "1"}
+             "allowed_values": "1"},
+
+            {"name": "Kernel pointer hiding",
+             "key": "kernel/kptr_restrict",
+             "allowed_values": "1, 2"},
             ]
 
 
