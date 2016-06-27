@@ -42,6 +42,8 @@ TestResult:
 
     result - This is an item of type Result which indicates the pass status of
         the test that ran
+    confidence - Indicates how certain recon is about this result. Some tests
+        can only make a good guess.
     notes - This is an optional text string field which describes any remarks
         that the test added. This is typically used to indicate reasons why a
         test failed or was skipped.
@@ -67,6 +69,9 @@ class Result:
     PASS = 1
     FAIL = 2
     SKIP = 3
+
+    CONF_SURE = 1
+    CONF_GUESS = 3
 
 
 class ResultDisplayType:
@@ -108,9 +113,10 @@ class TestResults:
         term_colors = _get_term_colors()
         term_width = _get_term_width()
 
-        widths = {'TEST_NAME': 60, 'TEST_RESULT': 10, 'TOTAL': term_width}
+        widths = {'TEST_NAME': 60, 'TEST_RESULT': 9, 'TEST_CONFIDENCE': 11,
+                  'TOTAL': term_width}
         notes_width = (widths['TOTAL'] - widths['TEST_NAME'] -
-                       widths['TEST_RESULT'])
+                       widths['TEST_RESULT'] - widths['TEST_CONFIDENCE'])
 
         # used when a test name is longer than the name field, have
         # supporting details on the next line to make output nicer
@@ -121,6 +127,7 @@ class TestResults:
 
         print('{0: <{1}}'.format('Test Name', widths['TEST_NAME']) +
               '{0: <{1}}'.format('Result', widths['TEST_RESULT']) +
+              '{0: <{1}}'.format('Confidence', widths['TEST_CONFIDENCE']) +
               'Notes')
         print('=' * widths['TOTAL'])
 
@@ -139,13 +146,15 @@ class TestResults:
                     if notes and len(notes) > notes_width:
                         notes = notes[0:notes_width - 3] + '...'
 
-                    result_string = _build_result_string(res['name'],
-                                                         res['result'].result,
-                                                         notes,
-                                                         use_color,
-                                                         term_colors,
-                                                         False,
-                                                         widths)
+                    result_string = _build_result_string(
+                        res['name'],
+                        res['result'].result,
+                        res['result'].confidence,
+                        notes,
+                        use_color,
+                        term_colors,
+                        False,
+                        widths)
                     print(result_string)
 
             elif isinstance(res['result'], GroupTestResult):
@@ -167,6 +176,7 @@ class TestResults:
                         child_results.append(_build_result_string(
                             child_res['name'],
                             child_res['result'].result,
+                            child_res['result'].confidence,
                             notes,
                             use_color,
                             term_colors,
@@ -186,6 +196,7 @@ class TestResults:
                     parent_string = _build_result_string(
                         res['name'],
                         parent_result,
+                        None,
                         "",
                         use_color,
                         term_colors,
@@ -224,7 +235,7 @@ class TestResults:
         logger.info("Preparing to write CSV file [ {} ] ".format(filename))
 
         # Create the header row
-        header_row_items = ['Test', 'Subtest', 'Result', 'Notes']
+        header_row_items = ['Test', 'Subtest', 'Result', 'Notes', 'Confidence']
 
         rows = []
 
@@ -238,6 +249,7 @@ class TestResults:
                         sub_result['name'],
                         _result_text(sub_result['result'].result),
                         sub_result['result'].notes,
+                        _confidence_text(sub_result['result'].confidence),
                         ])
             else:
                 rows.append([
@@ -245,6 +257,7 @@ class TestResults:
                     None,
                     _result_text(test_result['result'].result),
                     test_result['result'].notes,
+                    _confidence_text(test_result['result'].confidence),
                     ])
 
         try:
@@ -390,9 +403,10 @@ class TestResults:
 
 
 class TestResult():
-    def __init__(self, result, notes=None):
+    def __init__(self, result, notes=None, confidence=Result.CONF_SURE):
         self._result = result
         self._notes = notes
+        self._confidence = confidence
 
     @property
     def result(self):
@@ -401,6 +415,10 @@ class TestResult():
     @property
     def notes(self):
         return self._notes
+
+    @property
+    def confidence(self):
+        return self._confidence
 
 
 class GroupTestResult():
@@ -447,12 +465,13 @@ class GroupTestResult():
         return len(self._results_list)
 
 
-def _build_result_string(name, result, notes, use_color, term_colors, indent,
-                         widths):
+def _build_result_string(name, result, confidence, notes, use_color,
+                         term_colors, indent, widths):
         """Internal utility function to build a result string
 
         :param name: Name of test
         :param result: Enum indicating the status of the test
+        :param confidence: Enum indicating the confidence of the test
         :param notes: Associated with the test
         :param use_color: Boolean indicating whether color should be displayed
         :param indent: Boolean indicating if test name should be indented
@@ -476,6 +495,12 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent,
             result_color = term_colors['fail']
             pass_string = 'FAIL'
 
+        conf_string = {
+            Result.CONF_SURE: '',
+            Result.CONF_GUESS: 'guess',
+            None: '',
+            }[confidence]
+
         tab = '     ' if indent else ''
 
         result_string = ""
@@ -496,6 +521,10 @@ def _build_result_string(name, result, notes, use_color, term_colors, indent,
         # If we're outputting color, terminate the color string
         if use_color:
             result_string += term_colors['end']
+
+        # Add the confidence string
+        result_string += '{0: <{1}}'.format(conf_string,
+                                            widths['TEST_CONFIDENCE'])
 
         # Add any notes
         if notes:
@@ -619,3 +648,10 @@ def _result_text(result):
     elif result == Result.SKIP:
         return_value = "SKIP"
     return return_value
+
+
+def _confidence_text(result):
+    return {
+        Result.CONF_GUESS: "guess",
+        Result.CONF_SURE: "sure",
+        }.get(result)
