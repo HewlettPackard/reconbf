@@ -1,3 +1,4 @@
+from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import TestResult
@@ -5,6 +6,7 @@ from reconbf.lib.result import Result
 
 import os
 import platform
+import string
 
 
 @test_class.explanation(
@@ -109,3 +111,129 @@ def missing_process_binaries():
             continue
 
     return results
+
+
+def _parse_deb_repo_line(line):
+    # this parses only the one-line format, because honestly, who uses deb822
+    # in their sources file...
+    line = line.strip()
+
+    # cut off the comments
+    comment_pos = line.find('#')
+    if comment_pos != -1:
+        line = line[:comment_pos]
+
+    # ignore empty lines
+    if not line:
+        return
+
+    # everything's split by whitespace
+    parts = line.split()
+    pkg_type = parts.pop(0)
+    while parts:
+        if '=' in parts[0]:
+            # just ignore the options...
+            parts.pop(0)
+        else:
+            break
+
+    if not parts:
+        logger.warning('deb entry "%s" missing uri, ignoring', line)
+        return
+    uri = parts.pop(0)
+
+    if not parts:
+        logger.warning('deb entry "%s" missing suite, ignoring', line)
+        return
+    suite = parts.pop(0)
+    components = parts
+    return {
+        'type': pkg_type,
+        'uri': uri,
+        'suite': suite,
+        'components': components,
+        }
+
+
+SOURCES_LIST_CHARS = set(string.ascii_letters + string.digits + '_-.')
+
+
+def _get_deb_repos():
+    repos = []
+    files = ['/etc/apt/sources.list']
+
+    try:
+        for name in os.listdir('/etc/apt/sources.list.d'):
+            if not name.endswith('.list'):
+                continue
+            if set(name).difference(SOURCES_LIST_CHARS):
+                # unexpected characters in the name, ignored by apt by default
+                continue
+
+            files.append('/etc/apt/sources.list.d/' + name)
+    except OSError:
+        # if the directory cannot be read, it's ok to ignore it
+        pass
+
+    for name in files:
+        try:
+            with open(name, 'r') as f:
+                for line in f:
+                    repo = _parse_deb_repo_line(line)
+                    if repo:
+                        repos.append(repo)
+        except EnvironmentError:
+            logger.warning('cannot read repo list "%s"', name)
+            continue
+
+    return repos
+
+
+@test_class.explanation(
+    """
+    Protection name: Security updates in repo lists
+
+    Check: Will the package manager look at security
+    updates when a standard system update is triggered.
+
+    Purpose: Many systems use a different repository
+    for standard releases and for security updates. This
+    is due to multiple reasons (security-only update
+    streams, mirror delays, etc.), but means a system
+    may seem to be updating ok even if no security
+    fixes are pulled.
+    Currently, this test supports Debian and Ubuntu
+    systems only.
+    """)
+def security_updates():
+    try:
+        distro, _version, version_name = platform.linux_distribution()
+    except Exception:
+        return TestResult(Result.SKIP, "Could not detect distribution")
+
+    if distro in ('Ubuntu', 'debian'):
+        repos = _get_deb_repos()
+
+        security_suite = version_name + '-security'
+        found_security = False
+
+        for repo in repos:
+            if repo['type'] != 'deb':
+                continue
+
+            if distro == 'Ubuntu' and repo['suite'] == security_suite:
+                found_security = True
+                break
+            if (distro == 'debian' and 'http://security.debian.org' in
+                    repo['uri']):
+                found_security = True
+                break
+
+        if found_security:
+            return TestResult(Result.PASS, "Security repo present")
+        else:
+            return TestResult(Result.FAIL,
+                              "Upstream security repo not configured")
+
+    else:
+        return TestResult(Result.SKIP, "Unknown distribution")
