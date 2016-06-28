@@ -92,11 +92,11 @@ def _check_relro(path):
     if b'GNU_RELRO' in headers:
         dynamic_section = _elf_dynamic(path)
         if b'BIND_NOW' in dynamic_section:
-            return 'full'
+            return ('full', Result.CONF_SURE)
         else:
-            return 'partial'
+            return ('partial', Result.CONF_SURE)
 
-    return 'none'
+    return ('none', Result.CONF_SURE)
 
 
 def _check_stack_canary(path):
@@ -111,9 +111,11 @@ def _check_stack_canary(path):
     """
     symbols = _elf_syms(path)
     if b'__stack_chk_fail' in symbols:
-        return True
+        return (True, Result.CONF_SURE)
 
-    return False
+    # with just -fstack-protector the application may not contain any functions
+    # that the compiler considers worth securing
+    return (False, Result.CONF_GUESS)
 
 
 def _check_nx(path):
@@ -126,9 +128,9 @@ def _check_nx(path):
     headers = _elf_prog_headers(path)
     for line in headers.split(b'\n'):
         if b'GNU_STACK' in line and b'RWE' not in line:
-            return True
+            return (True, Result.CONF_SURE)
 
-    return False
+    return (False, Result.CONF_SURE)
 
 
 def _check_pie(path):
@@ -142,9 +144,9 @@ def _check_pie(path):
     for line in file_headers.split(b'\n'):
         if b'Type:' in line:
             if b'EXEC' in line:
-                return False
+                return (False, Result.CONF_SURE)
             elif b'DYN' in line and b'(DEBUG)' in _elf_dynamic(path):
-                return True
+                return (True, Result.CONF_SURE)
             else:
                 raise ValueError(path + ' is a DSO so PIE test is invalid')
 
@@ -156,7 +158,7 @@ def _check_runpath(path):
     """
 
     dyn = _elf_dynamic(path)
-    return b'rpath' in dyn or b'runpath' in dyn
+    return (b'rpath' in dyn or b'runpath' in dyn, Result.CONF_SURE)
 
 
 def _find_used_libc(path):
@@ -198,7 +200,7 @@ def _check_fortify(path):
     libc = _find_used_libc(path)
     if not libc:
         logger.debug('Unable to determine location of libc')
-        return False
+        return (False, Result.CONF_GUESS)
 
     fortified = set([])
     for addr, sym, name in _symbols_in_dynsym(libc):
@@ -208,13 +210,15 @@ def _check_fortify(path):
 
     symbols = set([name for addr, sym, name in _symbols_in_dynsym(path)])
     if len(symbols.intersection(fortified)) > 0:
-        return True
+        return (True, Result.CONF_SURE)
 
     # if there are no functions to fortify, treat it the same as fortified
     if len(symbols.intersection(plain)) == 0:
-        return True
+        return (True, Result.CONF_SURE)
 
-    return False
+    # there may be a situation where a function is used on a buffer of unknown
+    # size and cannot be fortified - or it may be just not fortified
+    return (False, Result.CONF_GUESS)
 
 
 def _extract_symbols(cmd):
@@ -268,13 +272,15 @@ def _check_policy(context, policy, actual, results):
     fmt = "Expected: {} Actual: {}"
     for k in policy.keys():
         check = "[{:^12s}] {}".format(k, context)
-        if policy[k] != actual[k]:
+        if policy[k] != actual[k][0]:
             exp = str(policy[k]).capitalize()
-            act = str(actual[k]).capitalize()
+            act = str(actual[k][0]).capitalize()
             failure = fmt.format(exp, act)
-            results.add_result(check, TestResult(Result.FAIL, notes=failure))
+            results.add_result(check, TestResult(Result.FAIL, notes=failure,
+                                                 confidence=actual[k][1]))
         else:
-            results.add_result(check, TestResult(Result.PASS))
+            results.add_result(check, TestResult(Result.PASS,
+                                                 confidence=actual[k][1]))
 
 
 def _check_binaries(policy, filelist, predicate):
