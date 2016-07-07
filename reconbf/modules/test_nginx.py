@@ -252,7 +252,11 @@ def _conf_bad_protos():
 def ssl_protos(bad_protos):
     bad_protos = set(bad_protos)
     results = GroupTestResult()
-    config = _read_nginx_config('/etc/nginx/nginx.conf')
+
+    try:
+        config = _read_nginx_config('/etc/nginx/nginx.conf')
+    except (ParsingError, EnvironmentError):
+        return TestResult(Result.FAIL, "could not parse nginx config")
     http = _get_section(config, 'http')
 
     # check the default set in context 'http'
@@ -315,7 +319,7 @@ def ssl_ciphers(conf_ciphers):
 
     try:
         config = _read_nginx_config('/etc/nginx/nginx.conf')
-    except (ParsingError, IOError):
+    except (ParsingError, EnvironmentError):
         return TestResult(Result.FAIL, "could not parse nginx config")
 
     http = _get_section(config, 'http')
@@ -371,7 +375,7 @@ def ssl_cert():
 
     try:
         config = _read_nginx_config('/etc/nginx/nginx.conf')
-    except (ParsingError, IOError):
+    except (ParsingError, EnvironmentError):
         return TestResult(Result.FAIL, "could not parse nginx config")
 
     http = _get_section(config, 'http')
@@ -427,7 +431,7 @@ def version_advertise():
 
     try:
         config = _read_nginx_config('/etc/nginx/nginx.conf')
-    except (ParsingError, IOError):
+    except (ParsingError, EnvironmentError):
         return TestResult(Result.FAIL, "could not parse nginx config")
 
     http = _get_section(config, 'http')
