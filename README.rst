@@ -104,3 +104,8 @@ stack protection. While this check will not have false-positives, it may report
 a false-negative if the analysed binary was compiled with `-fstack-protector`
 (not `-fstack-protector-all`) and gcc decides that none of the functions
 contained buffers that require protection.
+
+
+License
+-------
+reconbf is released under Apache 2.0 license.
