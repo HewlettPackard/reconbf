@@ -40,7 +40,7 @@ def reboot_required():
     except Exception:
         return TestResult(Result.SKIP, "Could not detect distribution")
 
-    if distro in ('Ubuntu', 'debian'):
+    if distro in ('Ubuntu', 'Debian'):
         if os.path.isfile('/var/run/reboot-required'):
             try:
                 with open('/var/run/reboot-required.pkgs', 'r') as f:
@@ -225,7 +225,7 @@ def security_updates():
     except Exception:
         return TestResult(Result.SKIP, "Could not detect distribution")
 
-    if distro in ('Ubuntu', 'debian'):
+    if distro in ('Ubuntu', 'Debian'):
         repos = _get_deb_repos()
 
         security_suite = version_name + '-security'
@@ -238,7 +238,7 @@ def security_updates():
             if distro == 'Ubuntu' and repo['suite'] == security_suite:
                 found_security = True
                 break
-            if (distro == 'debian' and 'http://security.debian.org' in
+            if (distro == 'Debian' and 'http://security.debian.org' in
                     repo['uri']):
                 found_security = True
                 break
