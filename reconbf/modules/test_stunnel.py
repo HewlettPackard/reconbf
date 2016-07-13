@@ -162,7 +162,7 @@ def ssl_options(test_config):
 def _conf_bad_ciphers():
     return {
         'configs': '/etc/stunnel/*.conf',
-        'bad_ciphers': ['DES', 'MD5', 'RC4', 'DSS', 'SEED', 'aNULL', 'eNULL'],
+        'bad_ciphers': ['DES', 'MD5', 'RC4', 'SEED', 'aNULL', 'eNULL'],
         }
 
 

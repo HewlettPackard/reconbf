@@ -86,7 +86,7 @@ def _read_config(path):
 def _conf_bad_ciphers():
     return {
         'configs': '/etc/haproxy/haproxy.cfg',
-        'bad_ciphers': ['DES', 'MD5', 'RC4', 'DSS', 'SEED', 'aNULL', 'eNULL'],
+        'bad_ciphers': ['DES', 'MD5', 'RC4', 'SEED', 'aNULL', 'eNULL'],
         }
 
 
