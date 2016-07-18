@@ -284,7 +284,7 @@ def ssl_protos(bad_protos):
 
 
 def _conf_bad_ciphers():
-    return ['DES', 'MD5', 'RC4', 'DSS', 'SEED', 'aNULL', 'eNULL']
+    return ['DES', 'MD5', 'RC4', 'SEED', 'aNULL', 'eNULL']
 
 
 @test_class.takes_config(_conf_bad_ciphers)
