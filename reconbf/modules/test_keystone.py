@@ -75,6 +75,7 @@ def _parse_openstack_ini(path):
     configuration. Once the system is running, the token
     should be removed and only runtime configuration used.
     """)
+@test_class.set_mapping("OpenStack:Check-Identity-06")
 def admin_token():
     try:
         keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
@@ -111,6 +112,7 @@ def admin_token():
     Setting up a limit ensures that they're rejected without
     full processing.
     """)
+@test_class.set_mapping("OpenStack:Check-Identity-05")
 def body_size():
     try:
         keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
@@ -139,6 +141,7 @@ def body_size():
     make sure that a strong hash is used, preventing
     spoofing of credentials.
     """)
+@test_class.set_mapping("OpenStack:Check-Identity-04")
 def token_hash():
     try:
         keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
