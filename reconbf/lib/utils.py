@@ -239,12 +239,10 @@ def listening_executables():
 
 
 def config_get(config, option):
-    if isinstance(option, (list, tuple)):
-        for x in option[:-1]:
-            config = config.get(x, {})
-        return config.get(option[-1])
-    else:
-        return config.get(option)
+    option = option.split('.')
+    for x in option[:-1]:
+        config = config.get(x, {})
+    return config.get(option[-1])
 
 
 def config_search(config_lines, config_descriptor, comment_delims=['#'],
