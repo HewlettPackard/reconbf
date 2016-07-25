@@ -30,6 +30,9 @@ def _parse_openstack_ini_contents(fobj):
 
     for line in fobj:
         line = line.strip()
+        if not line:
+            continue
+
         if line.startswith('#'):
             continue
 
