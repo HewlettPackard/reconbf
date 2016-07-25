@@ -276,3 +276,18 @@ def takes_config(conf_gen_func=None):
         func.config_generator = conf_gen_func
         return func
     return decorate
+
+
+def set_mapping(*names):
+    """Decorator to indicate that the test is part of a known set
+
+    Example:
+        @set_mapping("Set:Identifier1", "Set:Identifier2")
+        def test_xyz(self):
+
+    :returns: Function which contains the has "set_mapping" attribute
+    """
+    def decorate(func):
+        func.set_mapping = names
+        return func
+    return decorate
