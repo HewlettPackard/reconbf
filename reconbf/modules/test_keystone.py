@@ -19,6 +19,9 @@ from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 from reconbf.lib import utils
 import collections
+import grp
+import os
+import pwd
 
 
 # While this doesn't take the openstack config types into account, this should
@@ -65,6 +68,10 @@ def _parse_openstack_ini(path):
     return contents
 
 
+def _conf_location():
+    return {'dir': '/etc/keystone'}
+
+
 @test_class.explanation("""
     Protection name: No admin token
 
@@ -76,10 +83,13 @@ def _parse_openstack_ini(path):
     should be removed and only runtime configuration used.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-06")
-def admin_token():
+@test_class.takes_config(_conf_location)
+def admin_token(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
-        paste_ini = _parse_openstack_ini('/etc/keystone/keystone-paste.ini')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = _parse_openstack_ini(path)
+        path = os.path.join(config['dir'], 'keystone-paste.ini')
+        paste_ini = _parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -113,9 +123,11 @@ def admin_token():
     full processing.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-05")
-def body_size():
+@test_class.takes_config(_conf_location)
+def body_size(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = _parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -142,9 +154,11 @@ def body_size():
     spoofing of credentials.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-04")
-def token_hash():
+@test_class.takes_config(_conf_location)
+def token_hash(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = _parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -164,3 +178,67 @@ def token_hash():
         return TestResult(Result.FAIL, 'token hash should be sha256 or sha512')
 
     return TestResult(Result.PASS)
+
+
+def _conf_details():
+    config = _conf_location().copy()
+    config['user'] = 'keystone'
+    config['group'] = 'keystone'
+    return config
+
+
+@test_class.explanation("""
+    Protection name: Config permissions
+
+    Check: Are keystone config permissions ok
+
+    Purpose: Keystone config files are critical to the
+    system's authentication. Ensure that they're only
+    available to the service.
+    """)
+@test_class.set_mapping("OpenStack:Check-Identity-01",
+                        "OpenStack:Check-Identity-02")
+@test_class.takes_config(_conf_details)
+def config_permission(config):
+    try:
+        user = pwd.getpwnam(config['user'])
+    except KeyError:
+        return TestResult(Result.SKIP,
+                          'Could not find user "%s"' % config['user'])
+
+    try:
+        group = grp.getgrnam(config['group'])
+    except KeyError:
+        return TestResult(Result.SKIP,
+                          'Could not find group "%s"' % config['group'])
+
+    def _check_ownership(path):
+        try:
+            st = os.stat(path)
+        except EnvironmentError:
+            return TestResult(Result.SKIP, 'file %s not found' % path)
+
+        if st.st_uid != user.pw_uid:
+            return TestResult(Result.FAIL,
+                              'Unexpected owner uid %s' % st.st_uid)
+        if st.st_gid != group.gr_gid:
+            return TestResult(Result.FAIL,
+                              'Unexpected group gid %s' % st.st_gid)
+        if st.st_mode & 0o640 != st.st_mode & 0o666:
+            return TestResult(Result.FAIL,
+                              'Permissions on the file should be more strict')
+        return TestResult(Result.PASS)
+
+    result = GroupTestResult()
+    files = ['keystone.conf',
+             'keystone-paste.ini',
+             'policy.json',
+             'logging.conf',
+             'ssl/certs/signing_cert.pem',
+             'ssl/private/signing_key.pem',
+             'ssl/certs/ca.pem',
+             ]
+    for f in files:
+        path = os.path.join(config['dir'], f)
+        result.add_result(path, _check_ownership(path))
+    return result
