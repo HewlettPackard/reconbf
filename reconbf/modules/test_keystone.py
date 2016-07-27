@@ -12,60 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from reconbf.lib.logger import logger
 from reconbf.lib import test_class
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 from reconbf.lib import utils
-import collections
 import grp
 import os
 import pwd
-
-
-# While this doesn't take the openstack config types into account, this should
-# be good enough. Lists can be parsed as needed and multi-values can be
-# special-cased.
-def _parse_openstack_ini_contents(fobj):
-    section = 'DEFAULT'
-    config = collections.defaultdict(dict)
-
-    for line in fobj:
-        line = line.strip()
-        if not line:
-            continue
-
-        if line.startswith('#'):
-            continue
-
-        if line.startswith('[') and line.endswith(']'):
-            section = line[1:-1]
-            continue
-
-        parts = line.split('=', 1)
-        if len(parts) != 2:
-            logger.warning("line cannot be parsed: '%s'", line)
-            continue
-
-        key, value = parts
-        key = key.strip()
-        value = value.strip()
-        if value.startswith('"') and value.endswith('"'):
-            value = value[1:-1]
-        elif value.startswith("'") and value.endswith("'"):
-            value = value[1:-1]
-
-        config[section][key] = value
-
-    return config
-
-
-@utils.idempotent
-def _parse_openstack_ini(path):
-    with open(path, 'r') as f:
-        contents = _parse_openstack_ini_contents(f)
-    return contents
 
 
 def _conf_location():
@@ -87,9 +41,9 @@ def _conf_location():
 def admin_token(config):
     try:
         path = os.path.join(config['dir'], 'keystone.conf')
-        keystone_ini = _parse_openstack_ini(path)
+        keystone_ini = utils.parse_openstack_ini(path)
         path = os.path.join(config['dir'], 'keystone-paste.ini')
-        paste_ini = _parse_openstack_ini(path)
+        paste_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -127,7 +81,7 @@ def admin_token(config):
 def body_size(config):
     try:
         path = os.path.join(config['dir'], 'keystone.conf')
-        keystone_ini = _parse_openstack_ini(path)
+        keystone_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -158,7 +112,7 @@ def body_size(config):
 def token_hash(config):
     try:
         path = os.path.join(config['dir'], 'keystone.conf')
-        keystone_ini = _parse_openstack_ini(path)
+        keystone_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -212,23 +166,6 @@ def config_permission(config):
         return TestResult(Result.SKIP,
                           'Could not find group "%s"' % config['group'])
 
-    def _check_ownership(path):
-        try:
-            st = os.stat(path)
-        except EnvironmentError:
-            return TestResult(Result.SKIP, 'file %s not found' % path)
-
-        if st.st_uid != user.pw_uid:
-            return TestResult(Result.FAIL,
-                              'Unexpected owner uid %s' % st.st_uid)
-        if st.st_gid != group.gr_gid:
-            return TestResult(Result.FAIL,
-                              'Unexpected group gid %s' % st.st_gid)
-        if st.st_mode & 0o640 != st.st_mode & 0o666:
-            return TestResult(Result.FAIL,
-                              'Permissions on the file should be more strict')
-        return TestResult(Result.PASS)
-
     result = GroupTestResult()
     files = ['keystone.conf',
              'keystone-paste.ini',
@@ -240,5 +177,7 @@ def config_permission(config):
              ]
     for f in files:
         path = os.path.join(config['dir'], f)
-        result.add_result(path, _check_ownership(path))
+        result.add_result(path,
+                          utils.validate_permissions(path, 0o640, user.pw_uid,
+                                                     group.gr_gid))
     return result
