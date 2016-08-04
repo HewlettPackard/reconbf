@@ -12,57 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from reconbf.lib.logger import logger
 from reconbf.lib import test_class
 from reconbf.lib.result import GroupTestResult
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 from reconbf.lib import utils
-import collections
+import grp
+import os
+import pwd
 
 
-# While this doesn't take the openstack config types into account, this should
-# be good enough. Lists can be parsed as needed and multi-values can be
-# special-cased.
-def _parse_openstack_ini_contents(fobj):
-    section = 'DEFAULT'
-    config = collections.defaultdict(dict)
-
-    for line in fobj:
-        line = line.strip()
-        if not line:
-            continue
-
-        if line.startswith('#'):
-            continue
-
-        if line.startswith('[') and line.endswith(']'):
-            section = line[1:-1]
-            continue
-
-        parts = line.split('=', 1)
-        if len(parts) != 2:
-            logger.warning("line cannot be parsed: '%s'", line)
-            continue
-
-        key, value = parts
-        key = key.strip()
-        value = value.strip()
-        if value.startswith('"') and value.endswith('"'):
-            value = value[1:-1]
-        elif value.startswith("'") and value.endswith("'"):
-            value = value[1:-1]
-
-        config[section][key] = value
-
-    return config
-
-
-@utils.idempotent
-def _parse_openstack_ini(path):
-    with open(path, 'r') as f:
-        contents = _parse_openstack_ini_contents(f)
-    return contents
+def _conf_location():
+    return {'dir': '/etc/keystone'}
 
 
 @test_class.explanation("""
@@ -76,10 +37,13 @@ def _parse_openstack_ini(path):
     should be removed and only runtime configuration used.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-06")
-def admin_token():
+@test_class.takes_config(_conf_location)
+def admin_token(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
-        paste_ini = _parse_openstack_ini('/etc/keystone/keystone-paste.ini')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = utils.parse_openstack_ini(path)
+        path = os.path.join(config['dir'], 'keystone-paste.ini')
+        paste_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -113,9 +77,11 @@ def admin_token():
     full processing.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-05")
-def body_size():
+@test_class.takes_config(_conf_location)
+def body_size(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -142,9 +108,11 @@ def body_size():
     spoofing of credentials.
     """)
 @test_class.set_mapping("OpenStack:Check-Identity-04")
-def token_hash():
+@test_class.takes_config(_conf_location)
+def token_hash(config):
     try:
-        keystone_ini = _parse_openstack_ini('/etc/keystone/keystone.conf')
+        path = os.path.join(config['dir'], 'keystone.conf')
+        keystone_ini = utils.parse_openstack_ini(path)
     except EnvironmentError:
         return TestResult(Result.SKIP, 'cannot read keystone config files')
 
@@ -164,3 +132,52 @@ def token_hash():
         return TestResult(Result.FAIL, 'token hash should be sha256 or sha512')
 
     return TestResult(Result.PASS)
+
+
+def _conf_details():
+    config = _conf_location().copy()
+    config['user'] = 'keystone'
+    config['group'] = 'keystone'
+    return config
+
+
+@test_class.explanation("""
+    Protection name: Config permissions
+
+    Check: Are keystone config permissions ok
+
+    Purpose: Keystone config files are critical to the
+    system's authentication. Ensure that they're only
+    available to the service.
+    """)
+@test_class.set_mapping("OpenStack:Check-Identity-01",
+                        "OpenStack:Check-Identity-02")
+@test_class.takes_config(_conf_details)
+def config_permission(config):
+    try:
+        user = pwd.getpwnam(config['user'])
+    except KeyError:
+        return TestResult(Result.SKIP,
+                          'Could not find user "%s"' % config['user'])
+
+    try:
+        group = grp.getgrnam(config['group'])
+    except KeyError:
+        return TestResult(Result.SKIP,
+                          'Could not find group "%s"' % config['group'])
+
+    result = GroupTestResult()
+    files = ['keystone.conf',
+             'keystone-paste.ini',
+             'policy.json',
+             'logging.conf',
+             'ssl/certs/signing_cert.pem',
+             'ssl/private/signing_key.pem',
+             'ssl/certs/ca.pem',
+             ]
+    for f in files:
+        path = os.path.join(config['dir'], f)
+        result.add_result(path,
+                          utils.validate_permissions(path, 0o640, user.pw_uid,
+                                                     group.gr_gid))
+    return result

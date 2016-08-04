@@ -72,6 +72,29 @@ def get_stats_on_file(file_name):
     return return_value
 
 
+def validate_permissions(file_name, perm_limit, uid, gid):
+    """Check the `file_name`'s permission and ownership.
+
+    :param file_name: The filename to check
+    :returns: A TestResult
+    """
+    st = get_stats_on_file(file_name)
+    if st is None:
+        return TestResult(Result.SKIP, "File %s doesn't exist" % file_name)
+
+    if st.st_uid != uid:
+        return TestResult(Result.FAIL,
+                          'Unexpected owner uid %s' % st.st_uid)
+    if st.st_gid != gid:
+        return TestResult(Result.FAIL,
+                          'Unexpected group gid %s' % st.st_gid)
+    if st.st_mode & perm_limit != st.st_mode & 0o666:
+        return TestResult(Result.FAIL,
+                          'Permissions on the file should be more strict')
+
+    return TestResult(Result.PASS)
+
+
 def get_files_list_from_dir(base_path, subdirs=True, files_only=True):
     """Utility function used to find all descendants of a base path
 
@@ -586,3 +609,47 @@ def find_certificate_issues(path, purpose='sslserver'):
                 return "key size < 2048 bits"
 
     return None
+
+
+# While this doesn't take the openstack config types into account, this should
+# be good enough. Lists can be parsed as needed and multi-values can be
+# special-cased.
+def _parse_openstack_ini_contents(fobj):
+    section = 'DEFAULT'
+    config = defaultdict(dict)
+
+    for line in fobj:
+        line = line.strip()
+        if not line:
+            continue
+
+        if line.startswith('#'):
+            continue
+
+        if line.startswith('[') and line.endswith(']'):
+            section = line[1:-1]
+            continue
+
+        parts = line.split('=', 1)
+        if len(parts) != 2:
+            logger.warning("line cannot be parsed: '%s'", line)
+            continue
+
+        key, value = parts
+        key = key.strip()
+        value = value.strip()
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        elif value.startswith("'") and value.endswith("'"):
+            value = value[1:-1]
+
+        config[section][key] = value
+
+    return config
+
+
+@idempotent
+def parse_openstack_ini(path):
+    with open(path, 'r') as f:
+        contents = _parse_openstack_ini_contents(f)
+    return contents
