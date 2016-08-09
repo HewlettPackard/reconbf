@@ -20,6 +20,27 @@ from reconbf.lib.result import Result, GroupTestResult, TestResult
 from reconbf.lib import utils
 
 
+@utils.idempotent
+def _get_main_docker_processes():
+    """Find all processes with the binary named "dockerd".
+    """
+
+    process_list = utils.running_processes()
+    docker_ps = []
+
+    for entry in process_list:
+        cmdline = utils.cmdline_for_pid(entry[0])
+        binary = cmdline[0]
+        bin_base = os.path.basename(binary)
+        if bin_base == b'dockerd' or (bin_base == b'docker' and
+                                      len(cmdline) >= 2 and
+                                      cmdline[1] == b'daemon'):
+            docker_ps.append((entry[0], cmdline))
+
+    return docker_ps
+
+
+# TODO: deprecated, delete after moving to _get_main_docker_process
 def _get_docker_processes():
     """Takes the return of a get_ps_full() and strips out the cruft to
     only the docker config lines.
@@ -38,7 +59,7 @@ def _get_docker_processes():
                                                    'cmd',
                                                    str(entry[0])])
                 # ps -o returns the heading 'CMD', so pop that off
-                results_list = results.split('\n')
+                results_list = results.split(b'\n')
                 results_list.pop(0)
                 docker_ps.append(results)
 
@@ -53,7 +74,7 @@ def _get_docker_ps():
 
     containers = []
     try:
-        containers = subprocess.check_output(['docker', 'ps']).split('\n')
+        containers = subprocess.check_output(['docker', 'ps']).split(b'\n')
         # docker ps command returns column headings, so pop those off
         containers.pop(0)
     except OSError:
@@ -71,11 +92,11 @@ def _get_docker_container():
     try:
         containers = subprocess.check_output(['docker',
                                               'ps',
-                                              '-q']).split('\n')
+                                              '-q']).split(b'\n')
     except OSError:
         return None
 
-    return containers
+    return [c for c in containers if c]
 
 
 def _get_docker_info():
@@ -134,22 +155,20 @@ def _parse_colon_delim(input_list, key=''):
     """)
 def test_traffic():
     logger.debug("Testing for restricted traffic between containers.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--icc=false' in entry:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--icc=false' in cmdline:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
         else:
             reason = "Direct communication between containers is enabled."
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -166,29 +185,27 @@ def test_traffic():
     """)
 def test_log_level():
     logger.debug("Checking the Docker log level.")
-    reason = "No Docker containers found."
-
-    result = None
 
     # if --log-level is set in ps, else find config file and check there
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--log-level=info' in entry:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--log-level=info' in cmdline:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-        elif '--log-level=debug' in entry:
+        elif '--log-level=debug' in cmdline:
             reason = ("It is not recommended to run Docker in production "
                       "in debug mode.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
 
         else:
             notes = "Recommended Docker log level is 'info'."
-            result = TestResult(Result.PASS, notes)
+            results.add_result("pid %s" % pid, TestResult(Result.PASS, notes))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -205,22 +222,21 @@ def test_log_level():
     """)
 def test_iptables():
     logger.debug("Checking the firewall settings.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
-    for entry in docker_ps:
-        if '--iptables=false' in entry:
-            result = TestResult(Result.PASS)
+
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--iptables=false' in cmdline:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
         else:
             reason = ("The iptables firewall is enabled on a per-container "
                       "basis and will need to be maintained by the user.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -236,23 +252,21 @@ def test_iptables():
     """)
 def test_insecure_registries():
     logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--insecure-registry' in entry:
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--insecure-registry' in cmdline:
             reason = ("A registry was specified with the --insecure-registry "
                       "flag.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
         else:
-            result = TestResult(Result.PASS)
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -267,23 +281,21 @@ def test_insecure_registries():
     """)
 def test_port_binding():
     logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '-H' in entry:
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '-H' in cmdline:
             reason = ("A container is binding to a specific interface "
                       "or port.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
         else:
-            result = TestResult(Result.PASS)
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -306,17 +318,16 @@ def test_secure_communication():
     # if so, break them into separate tests for better profile coverage
 
     logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
 
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
     for entry in docker_ps:
-        if '--tlsverify' in entry:
-            if '--tlscert' in entry:
-                if '--tlskey' in entry:
-                    if '--tlscacert' in entry:
+        if b'--tlsverify' in entry:
+            if b'--tlscert' in entry:
+                if b'--tlskey' in entry:
+                    if b'--tlscacert' in entry:
                         reason = ("Container set to validate certificates, "
                                   "has both certificate and key in place, "
                                   "and can act as an intermediate CA.")
@@ -365,7 +376,7 @@ def test_no_lxc():
         return TestResult(Result.SKIP, "Docker is not running.")
 
     for entry in docker_ps:
-        if 'lxc' in entry:
+        if b'lxc' in entry:
             reason = "LXC in ps output."
             result = TestResult(Result.FAIL, reason)
         else:
@@ -393,7 +404,7 @@ def test_user_owned():
         return TestResult(Result.SKIP, reason)
 
     for line in containers:
-        container_id = line.split(' ')
+        container_id = line.split(b' ')
 
     for instance in container_id[0]:
         results = subprocess.check_output(['docker',
@@ -401,7 +412,7 @@ def test_user_owned():
                                            '--format',
                                            '{{.ID}}:{{.Config.User}}',
                                            instance])
-        container_id = results.split(':')
+        container_id = results.split(b':')
         if container_id[1] is None:
             reason = ("Container " + str(container_id[0]) + " is running in "
                       "root namespace.")
@@ -430,7 +441,7 @@ def test_list_installed_packages():
         return TestResult(Result.SKIP, reason)
 
     for line in containers:
-        container_id = line.split(' ')
+        container_id = line.split(b' ')
 
     for instance in container_id[0]:
         flavor = subprocess.check_output(['docker',
@@ -443,13 +454,13 @@ def test_list_installed_packages():
                                              'exec',
                                              instance,
                                              'rpm',
-                                             '-qa']).split('\n')
+                                             '-qa']).split(b'\n')
         elif 'DEB' in flavor:
             notes = subprocess.check_output(['docker',
                                              'exec',
                                              instance,
                                              'dpkg',
-                                             '-l']).split('\n')
+                                             '-l']).split(b'\n')
         else:
             reason = "Host is not RedHat or Debian family."
             return TestResult(Result.SKIP, reason)
@@ -510,12 +521,12 @@ def test_docker_daemon():
 
     try:
         subprocess.check_output(['which', 'auditctl'])
-    except OSError:
+    except subprocess.CalledProcessError:
         note = "The auditctl command is not installed."
         return TestResult(Result.SKIP, note)
 
     audit = subprocess.check_output(['auditctl', '-l'])
-    if '/usr/bin/docker' in audit:
+    if b'/usr/bin/docker' in audit:
         return TestResult(Result.PASS)
     else:
         note = "/usr/bin/docker is not being tracked in auditctl."
@@ -559,7 +570,7 @@ def test_docker_privilege():
                                             testcmd,
                                             container_id])
 
-            entry = test.split(':')
+            entry = test.split(b':')
 
             if 'false' in entry:
                 result = TestResult(Result.PASS)
@@ -602,7 +613,7 @@ def test_memory_limit():
                                             '--format',
                                             '{{.ID}}:{{.Config.Memory}}',
                                             container_id])
-            mem_test = test.split(':')
+            mem_test = test.split(b':')
             try:
                 memory = mem_test[1].strip('\n')
             except IndexError:
@@ -659,7 +670,7 @@ def test_privilege_port_mapping():
             test = subprocess.check_output(['docker',
                                             'port',
                                             container_id])
-            pn = test.split(':')
+            pn = test.split(b':')
             try:
                 port_number = str(pn[1])
             except IndexError:
@@ -767,7 +778,7 @@ def test_cpu_priority():
                                             '--format',
                                             testcmd,
                                             container_id])
-            cpu_test = test.split(':')
+            cpu_test = test.split(b':')
             try:
                 cpu_return = cpu_test[1].strip('\n')
             except IndexError:
@@ -877,9 +888,9 @@ def test_restart_policy():
                                             testcmd,
                                             container_id])
             try:
-                entry = test.split(':')
-                r = entry[1].split('=')
-                restart_policy = r[1].split(" ")
+                entry = test.split(b':')
+                r = entry[1].split(b'=')
+                restart_policy = r[1].split(b" ")
                 max_retry = r[2]
                 policy = str(restart_policy[0])
 
