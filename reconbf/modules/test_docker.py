@@ -291,63 +291,6 @@ def test_port_binding():
 
 @test_class.explanation(
     """
-    Protection name: Validate secure communication.
-
-    Check: This check looks at the ps output for several --tls* options:
-    --tlsverify - this option ensures validation of TLS certificates
-    --tlscacert - this option specifies a certificate from a CA
-    --tlscert   - checks for the existence of a host certificate
-    --tlskey    - checks for the corresponding private key from a host cert
-
-    Purpose: This will check for the ability to communicate securely, across
-    multiple roles.
-    """)
-def test_secure_communication():
-    # TODO: check if there is a 'well known' HDP container that either
-    # acts as an intermediate CA (for --tlscacert option), or a server
-    # that clients connect to securely (for --tlscert and tlskey), and
-    # if so, break them into separate tests for better profile coverage
-
-    logger.debug("Testing for insecure registries.")
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
-        return TestResult(Result.SKIP, "Docker is not running.")
-
-    for entry in docker_ps:
-        if b'--tlsverify' in entry:
-            if b'--tlscert' in entry:
-                if b'--tlskey' in entry:
-                    if b'--tlscacert' in entry:
-                        reason = ("Container set to validate certificates, "
-                                  "has both certificate and key in place, "
-                                  "and can act as an intermediate CA.")
-                        logger.info(reason)
-                    else:
-                        reason = ("No CA certificate, container cannot act "
-                                  "as intermediate CA.")
-                        logger.info(reason)
-                else:
-                    reason = ("A public Certificate exists, but key does not."
-                              " Communciation unable to be decrypted.")
-                    logger.info(reason)
-
-            else:
-                reason = ("No certificate available, container will only be"
-                          " able to act as client and accept server cert.")
-
-        else:
-            reason = "Docker is not configured to validate certificates."
-            result = TestResult(Result.FAIL, reason)
-            return result
-
-    result = TestResult(Result.PASS)
-
-    return result
-
-
-@test_class.explanation(
-    """
     Protection name: Check if Docker is running inside LXC memory space.
 
     Check: Look at the ps to ensure no occurrence of lxc exists.
