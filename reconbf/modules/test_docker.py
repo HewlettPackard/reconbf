@@ -221,11 +221,11 @@ def test_iptables():
     results = GroupTestResult()
     for pid, cmdline in dockers:
         if '--iptables=false' in cmdline:
-            results.add_result("pid %s" % pid, TestResult(Result.PASS))
-        else:
             reason = ("The iptables firewall is enabled on a per-container "
                       "basis and will need to be maintained by the user.")
             results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
+        else:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
     return results
 
