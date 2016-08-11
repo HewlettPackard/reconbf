@@ -517,31 +517,20 @@ def test_docker_privilege():
 
     containers = _get_docker_container()
 
-    testcmd = '{{ .Id }}: {{.HostConfig.Privileged }}'
-
     if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
-        if container_id == '':
-            pass
+        inspect = _get_docker_inspect(container_id)
+        privileged = inspect.get("HostConfig", {}).get("Privileged")
+        check = "container " + str(container_id)
+
+        if not privileged:
+            result = TestResult(Result.PASS)
         else:
-            check = "container " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            entry = test.split(b':')
-
-            if 'false' in entry:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " is running with "
-                         "privileged flags set to true.")
-                result = TestResult(Result.FAIL, notes)
-            results.add_result(check, result)
+            notes = "Container is running with privileged flags set to true."
+            result = TestResult(Result.FAIL, notes)
+        results.add_result(check, result)
     return results
 
 
@@ -862,31 +851,29 @@ def test_mount_sensitive_directories():
 
     containers = _get_docker_container()
 
-    testcmd = '{{ .Id }}: Volumes={{ .Volumes }} VolumesRW={{ .VolumesRW }}'
-
     if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "container " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
+        inspect = _get_docker_inspect(container_id)
+        binds = inspect.get("HostConfig", {}).get("Binds") or []
+        check = "container " + str(container_id)
 
-            if ':true' in test:
-                notes = ("Container " + str(container_id) + " has "
-                         "sensitive host system directories " +
-                         "mounted.")
+        result = TestResult(Result.PASS)
+        for bind in binds:
+            parts = bind.split(':')
+            src = parts[0]
+            opts = parts[-1] if len(parts) > 2 else None
+            rw = bool(opts) and ('rw' in opts)
+
+            if (src.startswith('/usr') or src.startswith('/etc') or
+                    src.startswith('/bin') or src.startswith('/boot')):
+                notes = ("Container has sensitive host system directories "
+                         "mounted read-write: %s" % src)
                 result = TestResult(Result.FAIL, notes)
-            else:
-                result = TestResult(Result.PASS)
+                break
 
-            results.add_result(check, result)
+        results.add_result(check, result)
     return results
 
 
@@ -910,30 +897,21 @@ def test_IPC_host():
 
     containers = _get_docker_container()
 
-    testcmd = '{{ .Id }}: IpcMode={{ .HostConfig.Devices }}'
-
     if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
-        if container_id == '':
-            pass
+        inspect = _get_docker_inspect(container_id)
+        ipc_mode = inspect.get("HostConfig", {}).get("IpcMode")
+        check = "container " + str(container_id)
+
+        if ipc_mode == 'host':
+            notes = "Container is sharing IPC namespace with the host."
+            result = TestResult(Result.FAIL, notes)
         else:
-            check = "container " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
+            result = TestResult(Result.PASS)
 
-            if 'host' in test:
-                notes = ("Container " + str(container_id) + " is "
-                         "sharing IPC namespace with the container. ")
-                result = TestResult(Result.FAIL, notes)
-            else:
-                result = TestResult(Result.PASS)
-
-            results.add_result(check, result)
+        results.add_result(check, result)
     return results
 
 
@@ -957,28 +935,19 @@ def test_ulimit_default_override():
 
     containers = _get_docker_container()
 
-    testcmd = '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}'
-
     if not containers:
         return TestResult(Result.SKIP, notes)
 
     for container_id in containers:
-        if container_id == '':
-            pass
+        inspect = _get_docker_inspect(container_id)
+        ulimits = inspect.get("HostConfig", {}).get("Ulimits")
+        check = "container " + str(container_id)
+
+        if ulimits is None:
+            notes = "Container is running with default ulimits in place."
+            result = TestResult(Result.FAIL, notes)
         else:
-            check = "container " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
+            result = TestResult(Result.PASS)
 
-            if '<no value>' in test:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " is "
-                         "running with default ulimits in place. ")
-                result = TestResult(Result.FAIL, notes)
-
-            results.add_result(check, result)
+        results.add_result(check, result)
     return results
