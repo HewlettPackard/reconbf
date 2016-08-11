@@ -262,35 +262,6 @@ def test_insecure_registries():
 
 @test_class.explanation(
     """
-    Protection name: Test for socket/port binding.
-
-    Check: This checks looks at the output of a ps for the -H flag.
-
-    Purpose: The -H flag will bind to a specific interface or port on a
-    system. This can interfere with other processes or applications
-    using this interface or port and should not be used.
-    """)
-def test_port_binding():
-    logger.debug("Testing for insecure registries.")
-
-    dockers = _get_main_docker_processes()
-    if not dockers:
-        return TestResult(Result.SKIP, "Docker is not running.")
-
-    results = GroupTestResult()
-    for pid, cmdline in dockers:
-        if '-H' in cmdline:
-            reason = ("A container is binding to a specific interface "
-                      "or port.")
-            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
-        else:
-            results.add_result("pid %s" % pid, TestResult(Result.PASS))
-
-    return results
-
-
-@test_class.explanation(
-    """
     Protection name: Check if Docker is running inside LXC memory space.
 
     Check: Look at the ps to ensure no occurrence of lxc exists.
