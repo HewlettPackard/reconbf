@@ -399,50 +399,6 @@ def test_user_owned(inspect):
 
 @test_class.explanation(
     """
-    Protection name: List installed packages.
-
-    Check: This check will list all of the packages installed in a container.
-
-    Purpose: Best practice is to install as few packages as possible to
-    decrease the amount of additional processes, open ports, and other
-    items that could be used to compromise a system.
-    """)
-def test_list_installed_packages():
-    logger.debug("Listing installed packages.")
-    notes = ""
-
-    containers = _get_docker_container()
-    if not containers:
-        reason = "No Docker containers found."
-        return TestResult(Result.SKIP, reason)
-
-    for instance in containers:
-        flavor = subprocess.check_output(['docker',
-                                          'exec',
-                                          instance,
-                                          'cat',
-                                          '/etc/issue'])
-        if 'RH' in flavor:
-            notes = subprocess.check_output(['docker',
-                                             'exec',
-                                             instance,
-                                             'rpm',
-                                             '-qa']).split(b'\n')
-        elif 'DEB' in flavor:
-            notes = subprocess.check_output(['docker',
-                                             'exec',
-                                             instance,
-                                             'dpkg',
-                                             '-l']).split(b'\n')
-        else:
-            reason = "Host is not RedHat or Debian family."
-            return TestResult(Result.SKIP, reason)
-
-    return TestResult(Result.PASS, notes)
-
-
-@test_class.explanation(
-    """
     Protection name: Check storage driver.
 
     Check: This check will ensure the storage driver isn't aufs.
