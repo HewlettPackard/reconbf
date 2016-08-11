@@ -444,12 +444,9 @@ def test_docker_daemon():
     logger.debug("Checking auditing on the Docker daemon.")
     note = "Test is invalid for newer kernels."
 
-    kernel = os.uname()[2].split('.')
-    major_version = kernel[0]
-    minor_version = int(kernel[1])
-    if "3" in major_version:
-        if minor_version >= 12:
-            return TestResult(Result.SKIP, note)
+    kernel = tuple(int(x) for x in os.uname()[2].split('.')[:2])
+    if kernel >= (3, 12):
+        return TestResult(Result.SKIP, note)
 
     try:
         subprocess.check_output(['which', 'auditctl'])
