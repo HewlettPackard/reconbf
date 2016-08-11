@@ -509,64 +509,6 @@ def test_memory_limit(inspect):
 
 @test_class.explanation(
     """
-    Protection name: Priviledge port mapping.
-
-    Check: Containers should not use port numbers with
-    a value above 1024.
-
-    Purpose: If port numbers above 1024 are utilized the
-    users run the risk of ability to receive and transmit
-    various sensitive and privileged data. Allowing containers
-    to use them can bring serious implications.
-    """)
-def test_privilege_port_mapping():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
-
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "container " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'port',
-                                            container_id])
-            pn = test.split(b':')
-            try:
-                port_number = str(pn[1])
-            except IndexError:
-                notes = ("Container: " + str(container_id) + "returns "
-                         "a malformed port number value.")
-                result = TestResult(Result.SKIP, notes)
-            else:
-                if int(port_number) <= 1024:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "privileged port number - " + str(port_number) +
-                             ".")
-                    result = TestResult(Result.FAIL, notes)
-                elif port_number == '':
-                    notes = ("Container " + str(container_id) + " does not"
-                             "have a port number assigned.")
-                    result = TestResult(Result.FAIL, notes)
-                elif port_number is None:
-                    notes = ("Container " + str(container_id) + " does not"
-                             "have a port number assigned.")
-                    result = TestResult(Result.FAIL, notes)
-                else:
-                    result = TestResult(Result.PASS)
-            results.add_result(check, result)
-    return results
-
-
-@test_class.explanation(
-    """
     Protection name: Network Mode value.
 
     Check: Containers should not use "host" Network
