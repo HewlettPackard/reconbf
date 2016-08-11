@@ -274,20 +274,20 @@ def test_no_lxc():
     logger.debug("Testing if the container is running in LXC memory.")
     reason = "No Docker containers found."
 
-    result = None
-
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if b'lxc' in entry:
-            reason = "LXC in ps output."
-            result = TestResult(Result.FAIL, reason)
-        else:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
 
-    return result
+    for pid, cmdline in docker_ps:
+        if b'lxc' in cmdline:
+            reason = "LXC in ps output."
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
+        else:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
+
+    return results
 
 
 @test_class.explanation(
