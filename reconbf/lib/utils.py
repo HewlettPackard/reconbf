@@ -178,6 +178,18 @@ def running_processes():
     return procs
 
 
+def cmdline_for_pid(pid):
+    """Get the commandline arguments list for a given pid.
+
+    Potentially returns None if the process doesn't exist anymore."""
+    try:
+        with open('/proc/%s/cmdline' % pid, 'rb') as f:
+            return f.read().split(b'\0')
+    except EnvironmentError:
+        # process already terminated, or can't access cmdline
+        return None
+
+
 def is_service_running(service_name):
     """Use 'service <servicename> status' command to get the status of a
     service

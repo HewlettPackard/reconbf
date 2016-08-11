@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from reconbf.lib.logger import logger
+import functools
+import json
 import os
 import subprocess
 import reconbf.lib.test_class as test_class
@@ -20,6 +22,27 @@ from reconbf.lib.result import Result, GroupTestResult, TestResult
 from reconbf.lib import utils
 
 
+@utils.idempotent
+def _get_main_docker_processes():
+    """Find all processes with the binary named "dockerd".
+    """
+
+    process_list = utils.running_processes()
+    docker_ps = []
+
+    for entry in process_list:
+        cmdline = utils.cmdline_for_pid(entry[0])
+        binary = cmdline[0]
+        bin_base = os.path.basename(binary)
+        if bin_base == b'dockerd' or (bin_base == b'docker' and
+                                      len(cmdline) >= 2 and
+                                      cmdline[1] == b'daemon'):
+            docker_ps.append((entry[0], cmdline))
+
+    return docker_ps
+
+
+# TODO: deprecated, delete after moving to _get_main_docker_process
 def _get_docker_processes():
     """Takes the return of a get_ps_full() and strips out the cruft to
     only the docker config lines.
@@ -38,30 +61,14 @@ def _get_docker_processes():
                                                    'cmd',
                                                    str(entry[0])])
                 # ps -o returns the heading 'CMD', so pop that off
-                results_list = results.split('\n')
+                results_list = results.split(b'\n')
                 results_list.pop(0)
                 docker_ps.append(results)
 
     return docker_ps
 
 
-def _get_docker_ps():
-    """Runs the docker ps command.
-
-    :returns: The output of the docker ps command (minus heading).
-    """
-
-    containers = []
-    try:
-        containers = subprocess.check_output(['docker', 'ps']).split('\n')
-        # docker ps command returns column headings, so pop those off
-        containers.pop(0)
-    except OSError:
-        return None
-
-    return containers
-
-
+@utils.idempotent
 def _get_docker_container():
     """Runs the docker ps -q command.
 
@@ -71,11 +78,11 @@ def _get_docker_container():
     try:
         containers = subprocess.check_output(['docker',
                                               'ps',
-                                              '-q']).split('\n')
-    except OSError:
+                                              '-q']).split(b'\n')
+    except subprocess.CalledProcessError:
         return None
 
-    return containers
+    return [c for c in containers if c]
 
 
 def _get_docker_info():
@@ -85,41 +92,46 @@ def _get_docker_info():
     kernel, os, and initpath information.
     """
 
-    return subprocess.check_output(['docker', 'info'])
+    try:
+        return subprocess.check_output(['docker', 'info'])
+    except subprocess.CalledProcessError:
+        return None
 
 
+@utils.idempotent
 def _get_docker_inspect(container_id):
     """Runs the docker inspect command.
 
     :returns: JSON-formatted information about the container passed.
     """
 
-    return subprocess.check_output(['docker', 'inspect', container_id])
+    inspect = subprocess.check_output(['docker', 'inspect', container_id])
+    return json.loads(inspect)[0]
 
 
-def _parse_colon_delim(input_list, key=''):
-    """Parses a colon-delimited list (such as docker-info) into a dict
-    of key, value pairs.
+def _inspect_test(f):
+    """Common wrapper for all the tests which return the result based
+    on the "inspect" description of the container.
 
-    :returns: If key is specified, the list is searched for the
-    corresponding value. If a key is not specified, a dict of both the
-    collective keys and values is returned.
+    `f` is supposed to return TestResult for a given inspect description.
     """
+    @functools.wraps(f)
+    def wrapper():
+        containers = _get_docker_container()
+        if not containers:
+            return TestResult(Result.SKIP, "No Docker containers found.")
 
-    conf = {}
+        results = GroupTestResult()
+        for container_id in containers:
+            inspect = _get_docker_inspect(container_id)
+            check = "container " + str(container_id)
 
-    if not isinstance(input_list, list):
-        return None
+            result = f(inspect)
+            results.add_result(check, result)
 
-    for item in input_list:
-        k, v = item.split(':').strip()
-        if key:
-            if k == key:
-                return v
-        else:
-            conf[k] = v
+        return results
 
-    return conf
+    return wrapper
 
 
 @test_class.explanation(
@@ -134,22 +146,20 @@ def _parse_colon_delim(input_list, key=''):
     """)
 def test_traffic():
     logger.debug("Testing for restricted traffic between containers.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--icc=false' in entry:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--icc=false' in cmdline:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
         else:
             reason = "Direct communication between containers is enabled."
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -166,29 +176,27 @@ def test_traffic():
     """)
 def test_log_level():
     logger.debug("Checking the Docker log level.")
-    reason = "No Docker containers found."
-
-    result = None
 
     # if --log-level is set in ps, else find config file and check there
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--log-level=info' in entry:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--log-level=info' in cmdline:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-        elif '--log-level=debug' in entry:
+        elif '--log-level=debug' in cmdline:
             reason = ("It is not recommended to run Docker in production "
                       "in debug mode.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
 
         else:
             notes = "Recommended Docker log level is 'info'."
-            result = TestResult(Result.PASS, notes)
+            results.add_result("pid %s" % pid, TestResult(Result.PASS, notes))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -205,22 +213,21 @@ def test_log_level():
     """)
 def test_iptables():
     logger.debug("Checking the firewall settings.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
-    for entry in docker_ps:
-        if '--iptables=false' in entry:
-            result = TestResult(Result.PASS)
-        else:
+
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--iptables=false' in cmdline:
             reason = ("The iptables firewall is enabled on a per-container "
                       "basis and will need to be maintained by the user.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
+        else:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -236,112 +243,21 @@ def test_iptables():
     """)
 def test_insecure_registries():
     logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
 
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
+    dockers = _get_main_docker_processes()
+    if not dockers:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if '--insecure-registry' in entry:
+    results = GroupTestResult()
+    for pid, cmdline in dockers:
+        if '--insecure-registry' in cmdline:
             reason = ("A registry was specified with the --insecure-registry "
                       "flag.")
-            result = TestResult(Result.FAIL, reason)
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
         else:
-            result = TestResult(Result.PASS)
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
 
-    return result
-
-
-@test_class.explanation(
-    """
-    Protection name: Test for socket/port binding.
-
-    Check: This checks looks at the output of a ps for the -H flag.
-
-    Purpose: The -H flag will bind to a specific interface or port on a
-    system. This can interfere with other processes or applications
-    using this interface or port and should not be used.
-    """)
-def test_port_binding():
-    logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
-
-    result = None
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
-        return TestResult(Result.SKIP, "Docker is not running.")
-
-    for entry in docker_ps:
-        if '-H' in entry:
-            reason = ("A container is binding to a specific interface "
-                      "or port.")
-            result = TestResult(Result.FAIL, reason)
-        else:
-            result = TestResult(Result.PASS)
-
-    return result
-
-
-@test_class.explanation(
-    """
-    Protection name: Validate secure communication.
-
-    Check: This check looks at the ps output for several --tls* options:
-    --tlsverify - this option ensures validation of TLS certificates
-    --tlscacert - this option specifies a certificate from a CA
-    --tlscert   - checks for the existence of a host certificate
-    --tlskey    - checks for the corresponding private key from a host cert
-
-    Purpose: This will check for the ability to communicate securely, across
-    multiple roles.
-    """)
-def test_secure_communication():
-    # TODO: check if there is a 'well known' HDP container that either
-    # acts as an intermediate CA (for --tlscacert option), or a server
-    # that clients connect to securely (for --tlscert and tlskey), and
-    # if so, break them into separate tests for better profile coverage
-
-    logger.debug("Testing for insecure registries.")
-    reason = "No Docker containers found."
-
-    docker_ps = _get_docker_processes()
-    if docker_ps is None:
-        return TestResult(Result.SKIP, "Docker is not running.")
-
-    for entry in docker_ps:
-        if '--tlsverify' in entry:
-            if '--tlscert' in entry:
-                if '--tlskey' in entry:
-                    if '--tlscacert' in entry:
-                        reason = ("Container set to validate certificates, "
-                                  "has both certificate and key in place, "
-                                  "and can act as an intermediate CA.")
-                        logger.info(reason)
-                    else:
-                        reason = ("No CA certificate, container cannot act "
-                                  "as intermediate CA.")
-                        logger.info(reason)
-                else:
-                    reason = ("A public Certificate exists, but key does not."
-                              " Communciation unable to be decrypted.")
-                    logger.info(reason)
-
-            else:
-                reason = ("No certificate available, container will only be"
-                          " able to act as client and accept server cert.")
-
-        else:
-            reason = "Docker is not configured to validate certificates."
-            result = TestResult(Result.FAIL, reason)
-            return result
-
-    result = TestResult(Result.PASS)
-
-    return result
+    return results
 
 
 @test_class.explanation(
@@ -358,20 +274,20 @@ def test_no_lxc():
     logger.debug("Testing if the container is running in LXC memory.")
     reason = "No Docker containers found."
 
-    result = None
-
     docker_ps = _get_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
-    for entry in docker_ps:
-        if 'lxc' in entry:
-            reason = "LXC in ps output."
-            result = TestResult(Result.FAIL, reason)
-        else:
-            result = TestResult(Result.PASS)
+    results = GroupTestResult()
 
-    return result
+    for pid, cmdline in docker_ps:
+        if b'lxc' in cmdline:
+            reason = "LXC in ps output."
+            results.add_result("pid %s" % pid, TestResult(Result.FAIL, reason))
+        else:
+            results.add_result("pid %s" % pid, TestResult(Result.PASS))
+
+    return results
 
 
 @test_class.explanation(
@@ -384,77 +300,15 @@ def test_no_lxc():
     Purpose: Validating the container is running in user namespace ensures
     that memory used by the container is not being used by root.
     """)
-def test_user_owned():
-    logger.debug("Testing if the container is running in user namespace.")
-    reason = "No Docker containers found."
+@_inspect_test
+def test_user_owned(inspect):
+    user = inspect.get("Config", {}).get("User")
 
-    containers = _get_docker_ps()
-    if not containers:
-        return TestResult(Result.SKIP, reason)
-
-    for line in containers:
-        container_id = line.split(' ')
-
-    for instance in container_id[0]:
-        results = subprocess.check_output(['docker',
-                                           'inspect',
-                                           '--format',
-                                           '{{.ID}}:{{.Config.User}}',
-                                           instance])
-        container_id = results.split(':')
-        if container_id[1] is None:
-            reason = ("Container " + str(container_id[0]) + " is running in "
-                      "root namespace.")
-            return TestResult(Result.FAIL, reason)
-        else:
-            return TestResult(Result.PASS)
-
-
-@test_class.explanation(
-    """
-    Protection name: List installed packages.
-
-    Check: This check will list all of the packages installed in a container.
-
-    Purpose: Best practice is to install as few packages as possible to
-    decrease the amount of additional processes, open ports, and other
-    items that could be used to compromise a system.
-    """)
-def test_list_installed_packages():
-    logger.debug("Listing installed packages.")
-    notes = ""
-
-    containers = _get_docker_ps()
-    if not containers:
-        reason = "No Docker containers found."
-        return TestResult(Result.SKIP, reason)
-
-    for line in containers:
-        container_id = line.split(' ')
-
-    for instance in container_id[0]:
-        flavor = subprocess.check_output(['docker',
-                                          'exec',
-                                          instance,
-                                          'cat',
-                                          '/etc/issue'])
-        if 'RH' in flavor:
-            notes = subprocess.check_output(['docker',
-                                             'exec',
-                                             instance,
-                                             'rpm',
-                                             '-qa']).split('\n')
-        elif 'DEB' in flavor:
-            notes = subprocess.check_output(['docker',
-                                             'exec',
-                                             instance,
-                                             'dpkg',
-                                             '-l']).split('\n')
-        else:
-            reason = "Host is not RedHat or Debian family."
-            return TestResult(Result.SKIP, reason)
-
-    return TestResult(Result.PASS, notes)
+    if not user:
+        reason = ("Container is running in root namespace.")
+        return TestResult(Result.FAIL, reason)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -468,19 +322,22 @@ def test_list_installed_packages():
     """)
 def test_storage_driver():
     logger.debug("Checking storage driver.")
-    notes = "No Docker containers found."
 
-    driver = _parse_colon_delim(list, key='Storage Driver')
+    info = _get_docker_info()
+    if not info:
+        return TestResult(Result.SKIP, "Cannot get docker info.")
+    driver = [l for l in info.splitlines()
+              if l.startswith(b'Storage Driver:')]
 
     if driver:
-        if 'aufs' in driver:
+        if 'aufs' in driver[0]:
             notes = "Storage driver set to insecure aufs."
             return TestResult(Result.FAIL, notes)
         else:
             return TestResult(Result.PASS)
     else:
         # empty driver, odd failure
-        return TestResult(Result.SKIP, notes)
+        return TestResult(Result.SKIP, "Cannot find storage driver")
 
 
 @test_class.explanation(
@@ -501,21 +358,18 @@ def test_docker_daemon():
     logger.debug("Checking auditing on the Docker daemon.")
     note = "Test is invalid for newer kernels."
 
-    kernel = os.uname()[2].split('.')
-    major_version = kernel[0]
-    minor_version = int(kernel[1])
-    if "3" in major_version:
-        if minor_version >= 12:
-            return TestResult(Result.SKIP, note)
+    kernel = tuple(int(x) for x in os.uname()[2].split('.')[:2])
+    if kernel >= (3, 12):
+        return TestResult(Result.SKIP, note)
 
     try:
         subprocess.check_output(['which', 'auditctl'])
-    except OSError:
+    except subprocess.CalledProcessError:
         note = "The auditctl command is not installed."
         return TestResult(Result.SKIP, note)
 
     audit = subprocess.check_output(['auditctl', '-l'])
-    if '/usr/bin/docker' in audit:
+    if b'/usr/bin/docker' in audit:
         return TestResult(Result.PASS)
     else:
         note = "/usr/bin/docker is not being tracked in auditctl."
@@ -535,40 +389,15 @@ def test_docker_daemon():
     set to true, this presents a vulnerability as this flag allows
     the container can then do almost everything that the host can do.
     """)
-def test_docker_privilege():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_docker_privilege(inspect):
+    privileged = inspect.get("HostConfig", {}).get("Privileged")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: {{.HostConfig.Privileged }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            entry = test.split(':')
-
-            if 'false' in entry:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " is running with "
-                         "privileged flags set to true.")
-                result = TestResult(Result.FAIL, notes)
-            results.add_result(check, result)
-    return results
+    if not privileged:
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container is running with privileged flags set to true."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -581,109 +410,15 @@ def test_docker_privilege():
     inadvertant Denial of Service for the host machine as docker can
     use all of the allotted memory given to a host machine.
     """)
-def test_memory_limit():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
-
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            '{{.ID}}:{{.Config.Memory}}',
-                                            container_id])
-            mem_test = test.split(':')
-            try:
-                memory = mem_test[1].strip('\n')
-            except IndexError:
-                notes = ("Container: " + str(container_id) + "returns "
-                         "a malformed memory value.")
-                result = TestResult(Result.SKIP, notes)
-            else:
-                if memory == '<no value>':
-                    notes = ("Container " + str(container_id) + " is running "
-                             "with no value given for memory limitations.")
-                    result = TestResult(Result.FAIL, notes)
-                elif memory is None:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "without memory limitations.")
-                    result = TestResult(Result.FAIL, notes)
-                elif int(memory) <= 0:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "without memory limitations.")
-                    result = TestResult(Result.FAIL, notes)
-                else:
-                    result = TestResult(Result.PASS)
-            results.add_result(check, result)
-    return results
-
-
-@test_class.explanation(
-    """
-    Protection name: Priviledge port mapping.
-
-    Check: Containers should not use port numbers with
-    a value above 1024.
-
-    Purpose: If port numbers above 1024 are utilized the
-    users run the risk of ability to receive and transmit
-    various sensitive and privileged data. Allowing containers
-    to use them can bring serious implications.
-    """)
-def test_privilege_port_mapping():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
-
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'port',
-                                            container_id])
-            pn = test.split(':')
-            try:
-                port_number = str(pn[1])
-            except IndexError:
-                notes = ("Container: " + str(container_id) + "returns "
-                         "a malformed port number value.")
-                result = TestResult(Result.SKIP, notes)
-            else:
-                if int(port_number) <= 1024:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "privileged port number - " + str(port_number) +
-                             ".")
-                    result = TestResult(Result.FAIL, notes)
-                elif port_number == '':
-                    notes = ("Container " + str(container_id) + " does not"
-                             "have a port number assigned.")
-                    result = TestResult(Result.FAIL, notes)
-                elif port_number is None:
-                    notes = ("Container " + str(container_id) + " does not"
-                             "have a port number assigned.")
-                    result = TestResult(Result.FAIL, notes)
-                else:
-                    result = TestResult(Result.PASS)
-            results.add_result(check, result)
-    return results
+@_inspect_test
+def test_memory_limit(inspect):
+    memory = inspect.get("HostConfig", {}).get("Memory")
+    if memory is None:
+        return TestResult(Result.SKIP, "Memory limit cannot be found")
+    elif memory <= 0:
+        return TestResult(Result.FAIL, "No memory limit set")
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -697,38 +432,15 @@ def test_privilege_port_mapping():
     potential that containers will be allowing processes
     to open low-numbered ports like any other root process.
     """)
-def test_host_network_mode():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_host_network_mode(inspect):
+    net_mode = inspect.get("HostConfig", {}).get("NetworkMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: NetworkMode={{ .HostConfig.NetworkMode }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if 'host' not in test:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " is running in "
-                         "host Network Mode.")
-                result = TestResult(Result.FAIL, notes)
-            results.add_result(check, result)
-    return results
+    if net_mode != 'host':
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container is running in host Network Mode."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -744,53 +456,15 @@ def test_host_network_mode():
     setting shares could lead to an inadvertant Denial of
     Service.
     """)
-def test_cpu_priority():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_cpu_priority(inspect):
+    shares = inspect.get("HostConfig", {}).get("CpuShares", 1024)
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: CpuShares={{ .Config.CpuShares }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-            cpu_test = test.split(':')
-            try:
-                cpu_return = cpu_test[1].strip('\n')
-            except IndexError:
-                notes = ("Container: " + str(container_id) + "returns "
-                         "a malformed CPU share value.")
-                result = TestResult(Result.SKIP, notes)
-            else:
-                if '<no value>' not in cpu_return:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "with no value given for CPU share limitations.")
-                    result = TestResult(Result.FAIL, notes)
-                elif not cpu_return:
-                    notes = ("Container " + str(container_id) + " is running "
-                             "with no value given for CPU share limitations.")
-                    result = TestResult(Result.SKIP, notes)
-                elif int(cpu_return) == 0 or int(cpu_return) == 1024:
-                    notes = ("Container " + str(container_id) + " do not have "
-                             "CPU shares in place.")
-                    result = TestResult(Result.FAIL, notes)
-                else:
-                    result = TestResult(Result.PASS)
-            results.add_result(check, result)
-    return results
+    if not shares or shares == 1024:
+        notes = "Container do not have CPU shares in place."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -804,38 +478,15 @@ def test_cpu_priority():
     data volume belonging to a container should be explicitly
     defined and administered.
     """)
-def test_read_only_root_fs():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_read_only_root_fs(inspect):
+    readonly = inspect.get("HostConfig", {}).get("ReadonlyRootfs", False)
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: ReadonlyRootfs={{ .HostConfig.ReadonlyRootfs }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if 'false' in test:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " has a file "
-                         "system with permissions that are not read only.")
-                result = TestResult(Result.FAIL, notes)
-            results.add_result(check, result)
-    return results
+    if readonly:
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container uses a root filesystem which is not read only."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -852,64 +503,28 @@ def test_read_only_root_fs():
     Name=' this is considered compliant as the container will never attempt to
     restart.
     """)
-def test_restart_policy():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_restart_policy(inspect):
+    policy_name = inspect.get("HostConfig", {}).get(
+        "RestartPolicy", {}).get("Name")
+    max_retry = inspect.get("HostConfig", {}).get(
+        "RestartPolicy", {}).get("MaximumRetryCount")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '''{{ .Id }}: RestartPolicyName={{ .HostConfig.RestartPolicy.Name }}
-    MaximumRetryCount={{ .HostConfig.RestartPolicy.MaximumRetryCount }}'''
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
+    if policy_name == 'no' or policy_name is None:
+        return TestResult(Result.PASS)
+    elif policy_name == 'always':
+        notes = ("Container will always restart regardless of max retry "
+                 "count. This is not recommended.")
+        return TestResult(Result.FAIL, notes)
+    elif policy_name == 'on-failure':
+        if int(max_retry) <= 5:
+            return TestResult(Result.PASS)
         else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-            try:
-                entry = test.split(':')
-                r = entry[1].split('=')
-                restart_policy = r[1].split(" ")
-                max_retry = r[2]
-                policy = str(restart_policy[0])
-
-            except IndexError:
-                notes = ("Container: " + str(container_id) + "returns "
-                         "a malformed restart policy value.")
-                result = TestResult(Result.SKIP, notes)
-            else:
-                if 'no' in policy or policy == " ":
-                    result = TestResult(Result.PASS)
-                elif policy is None:
-                    result = TestResult(Result.PASS)
-                elif policy == 'always':
-                    notes = ("Container " + str(container_id) + " will always "
-                             "restart regardless of max retry count. This is "
-                             " not recommended.")
-                    result = TestResult(Result.FAIL, notes)
-                elif policy == 'on-failure':
-                    if int(max_retry) <= 5:
-                        result = TestResult(Result.PASS)
-                    else:
-                        notes = ("Container " + str(container_id) + " max "
-                                 "retry count set to a non-compliant level.")
-                        result = TestResult(Result.FAIL, notes)
-                else:
-                    notes = ("Cannot test. Container " + str(container_id) +
-                             " settings not returning an expected value.")
-                    result = TestResult(Result.SKIP, notes)
-                results.add_result(check, result)
-    return results
+            notes = "Container max retry count set to a high level."
+            return TestResult(Result.FAIL, notes)
+    else:
+        notes = "Unknown restart policy."
+        return TestResult(Result.SKIP, notes)
 
 
 @test_class.explanation(
@@ -925,39 +540,15 @@ def test_restart_policy():
     the benefit of process level isolation between the host and
     the containers.
     """)
-def test_docker_pid_mode():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_docker_pid_mode(inspect):
+    pid_mode = inspect.get("HostConfig", {}).get("PidMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: PidMode={{ .HostConfig.PidMode }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if 'host' in test:
-                notes = ("Container " + str(container_id) + " is sharing "
-                         "host process namespaces.")
-                result = TestResult(Result.FAIL, notes)
-            else:
-                result = TestResult(Result.PASS)
-
-            results.add_result(check, result)
-    return results
+    if pid_mode == 'host':
+        notes = "Container is sharing host process namespaces."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -973,40 +564,23 @@ def test_docker_pid_mode():
     unwarranted changes that could put the Docker host in compromised
     state.
     """)
-def test_mount_sensitive_directories():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_mount_sensitive_directories(inspect):
+    binds = inspect.get("HostConfig", {}).get("Binds") or []
 
-    results = GroupTestResult()
+    for bind in binds:
+        parts = bind.split(':')
+        src = parts[0]
+        opts = parts[-1] if len(parts) > 2 else None
+        rw = bool(opts) and ('rw' in opts)
 
-    containers = _get_docker_container()
+        if rw and (src.startswith('/usr') or src.startswith('/etc') or
+                   src.startswith('/bin') or src.startswith('/boot')):
+            notes = ("Container has sensitive host system directories "
+                     "mounted read-write: %s" % src)
+            return TestResult(Result.FAIL, notes)
 
-    testcmd = '{{ .Id }}: Volumes={{ .Volumes }} VolumesRW={{ .VolumesRW }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if ':true' in test:
-                notes = ("Container " + str(container_id) + " has "
-                         "sensitive host system directories " +
-                         "mounted.")
-                result = TestResult(Result.FAIL, notes)
-            else:
-                result = TestResult(Result.PASS)
-
-            results.add_result(check, result)
-    return results
+    return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -1021,39 +595,15 @@ def test_mount_sensitive_directories():
     would basically allow processes within the container to see all of the
     IPC on the host system.
     """)
-def test_IPC_host():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_IPC_host(inspect):
+    ipc_mode = inspect.get("HostConfig", {}).get("IpcMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: IpcMode={{ .HostConfig.Devices }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if 'host' in test:
-                notes = ("Container " + str(container_id) + " is "
-                         "sharing IPC namespace with the container. ")
-                result = TestResult(Result.FAIL, notes)
-            else:
-                result = TestResult(Result.PASS)
-
-            results.add_result(check, result)
-    return results
+    if ipc_mode == 'host':
+        notes = "Container is sharing IPC namespace with the host."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -1068,36 +618,12 @@ def test_IPC_host():
     Setting system resource limits judiciously saves you from
     many vulnerabilities such as a fork bomb.
     """)
-def test_ulimit_default_override():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_ulimit_default_override(inspect):
+    ulimits = inspect.get("HostConfig", {}).get("Ulimits")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    testcmd = '{{ .Id }}: Ulimits={{ .HostConfig.Ulimits }}'
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        if container_id == '':
-            pass
-        else:
-            check = "Checking container: " + str(container_id)
-            test = subprocess.check_output(['docker',
-                                            'inspect',
-                                            '--format',
-                                            testcmd,
-                                            container_id])
-
-            if '<no value>' in test:
-                result = TestResult(Result.PASS)
-            else:
-                notes = ("Container " + str(container_id) + " is "
-                         "running with default ulimits in place. ")
-                result = TestResult(Result.FAIL, notes)
-
-            results.add_result(check, result)
-    return results
+    if ulimits is None:
+        notes = "Container is running with default ulimits in place."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
