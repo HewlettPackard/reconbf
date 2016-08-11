@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from reconbf.lib.logger import logger
+import functools
 import json
 import os
 import subprocess
@@ -106,6 +107,31 @@ def _get_docker_inspect(container_id):
 
     inspect = subprocess.check_output(['docker', 'inspect', container_id])
     return json.loads(inspect)[0]
+
+
+def _inspect_test(f):
+    """Common wrapper for all the tests which return the result based
+    on the "inspect" description of the container.
+
+    `f` is supposed to return TestResult for a given inspect description.
+    """
+    @functools.wraps(f)
+    def wrapper():
+        containers = _get_docker_container()
+        if not containers:
+            return TestResult(Result.SKIP, "No Docker containers found.")
+
+        results = GroupTestResult()
+        for container_id in containers:
+            inspect = _get_docker_inspect(container_id)
+            check = "container " + str(container_id)
+
+            result = f(inspect)
+            results.add_result(check, result)
+
+        return results
+
+    return wrapper
 
 
 @test_class.explanation(
@@ -360,28 +386,15 @@ def test_no_lxc():
     Purpose: Validating the container is running in user namespace ensures
     that memory used by the container is not being used by root.
     """)
-def test_user_owned():
-    logger.debug("Testing if the container is running in user namespace.")
-    reason = "No Docker containers found."
+@_inspect_test
+def test_user_owned(inspect):
+    user = inspect.get("Config", {}).get("User")
 
-    containers = _get_docker_container()
-    if not containers:
-        return TestResult(Result.SKIP, reason)
-
-    results = GroupTestResult()
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        user = inspect.get("Config", {}).get("User")
-        check = "container " + str(container_id)
-
-        if not user:
-            reason = ("Container is running in root namespace.")
-            results.add_result(check, TestResult(Result.FAIL, reason))
-        else:
-            results.add_result(check, TestResult(Result.PASS))
-
-    return results
+    if not user:
+        reason = ("Container is running in root namespace.")
+        return TestResult(Result.FAIL, reason)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -509,29 +522,15 @@ def test_docker_daemon():
     set to true, this presents a vulnerability as this flag allows
     the container can then do almost everything that the host can do.
     """)
-def test_docker_privilege():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_docker_privilege(inspect):
+    privileged = inspect.get("HostConfig", {}).get("Privileged")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        privileged = inspect.get("HostConfig", {}).get("Privileged")
-        check = "container " + str(container_id)
-
-        if not privileged:
-            result = TestResult(Result.PASS)
-        else:
-            notes = "Container is running with privileged flags set to true."
-            result = TestResult(Result.FAIL, notes)
-        results.add_result(check, result)
-    return results
+    if not privileged:
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container is running with privileged flags set to true."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -544,29 +543,15 @@ def test_docker_privilege():
     inadvertant Denial of Service for the host machine as docker can
     use all of the allotted memory given to a host machine.
     """)
-def test_memory_limit():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
-
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        check = "container " + str(container_id)
-        inspect = _get_docker_inspect(container_id)
-        memory = inspect.get("HostConfig", {}).get("Memory")
-        if memory is None:
-            result = TestResult(Result.SKIP, "Memory limit cannot be found")
-        elif memory <= 0:
-            result = TestResult(Result.FAIL, "No memory limit set")
-        else:
-            result = TestResult(Result.PASS)
-        results.add_result(check, result)
-    return results
+@_inspect_test
+def test_memory_limit(inspect):
+    memory = inspect.get("HostConfig", {}).get("Memory")
+    if memory is None:
+        return TestResult(Result.SKIP, "Memory limit cannot be found")
+    elif memory <= 0:
+        return TestResult(Result.FAIL, "No memory limit set")
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -638,29 +623,15 @@ def test_privilege_port_mapping():
     potential that containers will be allowing processes
     to open low-numbered ports like any other root process.
     """)
-def test_host_network_mode():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_host_network_mode(inspect):
+    net_mode = inspect.get("HostConfig", {}).get("NetworkMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        net_mode = inspect.get("HostConfig", {}).get("NetworkMode")
-        check = "container " + str(container_id)
-
-        if net_mode != 'host':
-            result = TestResult(Result.PASS)
-        else:
-            notes = "Container is running in host Network Mode."
-            result = TestResult(Result.FAIL, notes)
-        results.add_result(check, result)
-    return results
+    if net_mode != 'host':
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container is running in host Network Mode."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -676,29 +647,15 @@ def test_host_network_mode():
     setting shares could lead to an inadvertant Denial of
     Service.
     """)
-def test_cpu_priority():
-    logger.debug("Testing if the container has memory limitations.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_cpu_priority(inspect):
+    shares = inspect.get("HostConfig", {}).get("CpuShares", 1024)
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        shares = inspect.get("HostConfig", {}).get("CpuShares", 1024)
-        check = "container " + str(container_id)
-
-        if not shares or shares == 1024:
-            notes = "Container do not have CPU shares in place."
-            result = TestResult(Result.FAIL, notes)
-        else:
-            result = TestResult(Result.PASS)
-        results.add_result(check, result)
-    return results
+    if not shares or shares == 1024:
+        notes = "Container do not have CPU shares in place."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -712,29 +669,15 @@ def test_cpu_priority():
     data volume belonging to a container should be explicitly
     defined and administered.
     """)
-def test_read_only_root_fs():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_read_only_root_fs(inspect):
+    readonly = inspect.get("HostConfig", {}).get("ReadonlyRootfs", False)
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        readonly = inspect.get("HostConfig", {}).get("ReadonlyRootfs", False)
-        check = "container " + str(container_id)
-
-        if readonly:
-            result = TestResult(Result.PASS)
-        else:
-            notes = "Container uses a root filesystem which is not read only."
-            result = TestResult(Result.FAIL, notes)
-        results.add_result(check, result)
-    return results
+    if readonly:
+        return TestResult(Result.PASS)
+    else:
+        notes = "Container uses a root filesystem which is not read only."
+        return TestResult(Result.FAIL, notes)
 
 
 @test_class.explanation(
@@ -751,44 +694,28 @@ def test_read_only_root_fs():
     Name=' this is considered compliant as the container will never attempt to
     restart.
     """)
-def test_restart_policy():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_restart_policy(inspect):
+    policy_name = inspect.get("HostConfig", {}).get(
+        "RestartPolicy", {}).get("Name")
+    max_retry = inspect.get("HostConfig", {}).get(
+        "RestartPolicy", {}).get("MaximumRetryCount")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        policy_name = inspect.get("HostConfig", {}).get(
-            "RestartPolicy", {}).get("Name")
-        max_retry = inspect.get("HostConfig", {}).get(
-            "RestartPolicy", {}).get("MaximumRetryCount")
-        check = "container " + str(container_id)
-
-        if policy_name == 'no':
-            result = TestResult(Result.PASS)
-        elif policy_name is None:
-            result = TestResult(Result.PASS)
-        elif policy_name == 'always':
-            notes = ("Container will always restart regardless of max retry "
-                     "count. This is not recommended.")
-            result = TestResult(Result.FAIL, notes)
-        elif policy_name == 'on-failure':
-            if int(max_retry) <= 5:
-                result = TestResult(Result.PASS)
-            else:
-                notes = "Container max retry count set to a high level."
-                result = TestResult(Result.FAIL, notes)
+    if policy_name == 'no' or policy_name is None:
+        return TestResult(Result.PASS)
+    elif policy_name == 'always':
+        notes = ("Container will always restart regardless of max retry "
+                 "count. This is not recommended.")
+        return TestResult(Result.FAIL, notes)
+    elif policy_name == 'on-failure':
+        if int(max_retry) <= 5:
+            return TestResult(Result.PASS)
         else:
-            notes = "Unknown restart policy."
-            result = TestResult(Result.SKIP, notes)
-        results.add_result(check, result)
-    return results
+            notes = "Container max retry count set to a high level."
+            return TestResult(Result.FAIL, notes)
+    else:
+        notes = "Unknown restart policy."
+        return TestResult(Result.SKIP, notes)
 
 
 @test_class.explanation(
@@ -804,30 +731,15 @@ def test_restart_policy():
     the benefit of process level isolation between the host and
     the containers.
     """)
-def test_docker_pid_mode():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_docker_pid_mode(inspect):
+    pid_mode = inspect.get("HostConfig", {}).get("PidMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        pid_mode = inspect.get("HostConfig", {}).get("PidMode")
-        check = "container " + str(container_id)
-
-        if pid_mode == 'host':
-            notes = "Container is sharing host process namespaces."
-            result = TestResult(Result.FAIL, notes)
-        else:
-            result = TestResult(Result.PASS)
-
-        results.add_result(check, result)
-    return results
+    if pid_mode == 'host':
+        notes = "Container is sharing host process namespaces."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -843,38 +755,23 @@ def test_docker_pid_mode():
     unwarranted changes that could put the Docker host in compromised
     state.
     """)
-def test_mount_sensitive_directories():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_mount_sensitive_directories(inspect):
+    binds = inspect.get("HostConfig", {}).get("Binds") or []
 
-    results = GroupTestResult()
+    for bind in binds:
+        parts = bind.split(':')
+        src = parts[0]
+        opts = parts[-1] if len(parts) > 2 else None
+        rw = bool(opts) and ('rw' in opts)
 
-    containers = _get_docker_container()
+        if rw and (src.startswith('/usr') or src.startswith('/etc') or
+                   src.startswith('/bin') or src.startswith('/boot')):
+            notes = ("Container has sensitive host system directories "
+                     "mounted read-write: %s" % src)
+            return TestResult(Result.FAIL, notes)
 
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        binds = inspect.get("HostConfig", {}).get("Binds") or []
-        check = "container " + str(container_id)
-
-        result = TestResult(Result.PASS)
-        for bind in binds:
-            parts = bind.split(':')
-            src = parts[0]
-            opts = parts[-1] if len(parts) > 2 else None
-            rw = bool(opts) and ('rw' in opts)
-
-            if (src.startswith('/usr') or src.startswith('/etc') or
-                    src.startswith('/bin') or src.startswith('/boot')):
-                notes = ("Container has sensitive host system directories "
-                         "mounted read-write: %s" % src)
-                result = TestResult(Result.FAIL, notes)
-                break
-
-        results.add_result(check, result)
-    return results
+    return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -889,30 +786,15 @@ def test_mount_sensitive_directories():
     would basically allow processes within the container to see all of the
     IPC on the host system.
     """)
-def test_IPC_host():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_IPC_host(inspect):
+    ipc_mode = inspect.get("HostConfig", {}).get("IpcMode")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        ipc_mode = inspect.get("HostConfig", {}).get("IpcMode")
-        check = "container " + str(container_id)
-
-        if ipc_mode == 'host':
-            notes = "Container is sharing IPC namespace with the host."
-            result = TestResult(Result.FAIL, notes)
-        else:
-            result = TestResult(Result.PASS)
-
-        results.add_result(check, result)
-    return results
+    if ipc_mode == 'host':
+        notes = "Container is sharing IPC namespace with the host."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
 
 
 @test_class.explanation(
@@ -927,27 +809,12 @@ def test_IPC_host():
     Setting system resource limits judiciously saves you from
     many vulnerabilities such as a fork bomb.
     """)
-def test_ulimit_default_override():
-    logger.debug("Testing if the container is running in user namespace.")
-    notes = "No Docker containers found or docker is not running."
+@_inspect_test
+def test_ulimit_default_override(inspect):
+    ulimits = inspect.get("HostConfig", {}).get("Ulimits")
 
-    results = GroupTestResult()
-
-    containers = _get_docker_container()
-
-    if not containers:
-        return TestResult(Result.SKIP, notes)
-
-    for container_id in containers:
-        inspect = _get_docker_inspect(container_id)
-        ulimits = inspect.get("HostConfig", {}).get("Ulimits")
-        check = "container " + str(container_id)
-
-        if ulimits is None:
-            notes = "Container is running with default ulimits in place."
-            result = TestResult(Result.FAIL, notes)
-        else:
-            result = TestResult(Result.PASS)
-
-        results.add_result(check, result)
-    return results
+    if ulimits is None:
+        notes = "Container is running with default ulimits in place."
+        return TestResult(Result.FAIL, notes)
+    else:
+        return TestResult(Result.PASS)
