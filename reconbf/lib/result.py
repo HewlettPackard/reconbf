@@ -570,21 +570,12 @@ def _create_html_result_row(result, do_indent):
     :return: HTML string for the row
     """
 
-    PASS_CLASS = "test_pass"
-    FAIL_CLASS = "test_fail"
-    SKIP_CLASS = "test_skip"
     INDENT_CLASS = "result_indent"
 
     # if we're indenting, set the class style to the indent style
     indent_class = " class=" + INDENT_CLASS if do_indent else ""
 
-    result_class = ""
-    if result['result'].result == Result.PASS:
-        result_class = " class=" + PASS_CLASS
-    elif result['result'].result == Result.SKIP:
-        result_class = " class=" + SKIP_CLASS
-    elif result['result'].result == Result.FAIL:
-        result_class = " class=" + FAIL_CLASS
+    result_class = " class=" + _result_to_class(result['result'].result)
 
     row_string = ""
     row_string += "  <tr{}>\n".format(result_class)
@@ -606,17 +597,7 @@ def _create_html_group_row(result):
     :return: HTML string for the row
     """
 
-    PASS_CLASS = "test_pass"
-    FAIL_CLASS = "test_fail"
-    SKIP_CLASS = "test_skip"
-
-    result_class = ""
-    if result['result'].result == Result.PASS:
-        result_class = " class=" + PASS_CLASS
-    elif result['result'].result == Result.SKIP:
-        result_class = " class=" + SKIP_CLASS
-    elif result['result'].result == Result.FAIL:
-        result_class = " class=" + FAIL_CLASS
+    result_class = " class=" + _result_to_class(result['result'].result)
 
     row_string = ""
     row_string += "  <tr{}>\n".format(result_class)
@@ -627,6 +608,19 @@ def _create_html_group_row(result):
     row_string += "  </tr>\n"
 
     return row_string
+
+
+def _result_to_class(res):
+    PASS_CLASS = "test_pass"
+    FAIL_CLASS = "test_fail"
+    SKIP_CLASS = "test_skip"
+
+    mapping = {
+        Result.PASS: PASS_CLASS,
+        Result.FAIL: FAIL_CLASS,
+        Result.SKIP: SKIP_CLASS,
+    }
+    return mapping[res]
 
 
 def _get_term_colors():
