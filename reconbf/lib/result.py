@@ -331,10 +331,7 @@ class TestResults:
                             child_res['name'], child_res['result'].result,
                             child_res['result'].notes, do_indent=True))
 
-                if res['result'].failed:
-                    parent_result = Result.FAIL
-                else:
-                    parent_result = Result.PASS
+                parent_result = res['result'].result
 
                 if (_check_display_result(parent_result, display_type) or
                         display_type ==

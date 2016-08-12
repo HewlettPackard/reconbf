@@ -161,7 +161,7 @@ def _output_report(results, report_type, report_file, display_mode=None):
             logger.error("Unable to find 'html_template' setting in config")
             sys.exit(2)
         else:
-            templates_dir = 'templates'
+            templates_dir = 'reconbf/templates'
 
             html_template = templates_dir + '/' + html_template
             logger.info("Using template from %s", html_template)
