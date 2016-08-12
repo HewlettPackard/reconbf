@@ -1,7 +1,11 @@
-<HTML>
+<html>
 
 <h1>ReconBF Run Results</h1>
 
+<p>
+  <input type="button" value="Hide/show passing tests" onClick="toggle_passing();">
+  <input type="button" value="Hide/show skipped tests" onClick="toggle_skipped();">
+</p>
 <table>
   <col width="30%">
   <col width="8%">
@@ -17,7 +21,6 @@
 
 
 </table>
-</HTML>
 
 <style type="text/css">
 
@@ -59,24 +62,46 @@ th {
   height: 40px;
 }
 
-.test_pass {
+td.test_pass {
   color: green;
   font-weight: bold;
 }
 
-.test_fail {
+td.test_fail {
   color: red;
   font-weight: bold;
 }
 
-.test_skip {
+td.test_skip {
   color: orange;
   font-weight: bold;
 }
-
 
 .result_indent {
   text-indent: 30px;
 }
 
+.hidden {
+  display: none;
+}
+
 </style>
+<script type="text/javascript">
+function toggle_passing() {
+  rows = document.getElementsByClassName('test_pass');
+  for (var i=0; rows[i]; i++) {
+    if (rows[i].tagName != "TR")
+      continue;
+    rows[i].classList.toggle("hidden");
+  }
+}
+function toggle_skipped() {
+  rows = document.getElementsByClassName('test_skip');
+  for (var i=0; rows[i]; i++) {
+    if (rows[i].tagName != "TR")
+      continue;
+    rows[i].classList.toggle("hidden");
+  }
+}
+</script>
+</html>
