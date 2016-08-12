@@ -16,6 +16,7 @@ from .logger import logger
 from . import config
 from . import constants
 
+import cgi
 import csv
 import json
 import subprocess
@@ -587,10 +588,12 @@ def _create_html_result_row(result, do_indent):
 
     row_string = ""
     row_string += "  <tr>\n"
-    row_string += "    <td{}>{}</td>\n".format(indent_class, result['name'])
+    row_string += "    <td{}>{}</td>\n".format(
+        indent_class, cgi.escape(result['name']))
     row_string += "    <td{}>{}</td>\n".format(
         result_class, _result_text(result['result'].result))
-    row_string += "    <td>{}</td>\n".format(result['result'].notes or "")
+    row_string += "    <td>{}</td>\n".format(
+        cgi.escape(result['result'].notes or ""))
     row_string += "  </tr>\n"
 
     return row_string
@@ -617,7 +620,7 @@ def _create_html_group_row(result):
 
     row_string = ""
     row_string += "  <tr>\n"
-    row_string += "    <td>{}</td>\n".format(result['name'])
+    row_string += "    <td>{}</td>\n".format(cgi.escape(result['name']))
     row_string += "    <td{}>{}</td>\n".format(
         result_class, _result_text(result['result'].result))
     row_string += "    <td></td>\n"
