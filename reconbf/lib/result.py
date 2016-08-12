@@ -587,7 +587,7 @@ def _create_html_result_row(result, do_indent):
         result_class = " class=" + FAIL_CLASS
 
     row_string = ""
-    row_string += "  <tr>\n"
+    row_string += "  <tr{}>\n".format(result_class)
     row_string += "    <td{}>{}</td>\n".format(
         indent_class, cgi.escape(result['name']))
     row_string += "    <td{}>{}</td>\n".format(
@@ -619,7 +619,7 @@ def _create_html_group_row(result):
         result_class = " class=" + FAIL_CLASS
 
     row_string = ""
-    row_string += "  <tr>\n"
+    row_string += "  <tr{}>\n".format(result_class)
     row_string += "    <td>{}</td>\n".format(cgi.escape(result['name']))
     row_string += "    <td{}>{}</td>\n".format(
         result_class, _result_text(result['result'].result))
