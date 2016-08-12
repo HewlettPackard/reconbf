@@ -602,7 +602,7 @@ def _create_html_result_row(name, result, notes, do_indent):
     row_string += "    <td{}>{}</td>\n".format(indent_class, name)
     row_string += "    <td{}>{}</td>\n".format(result_class,
                                                _result_text(result))
-    row_string += "    <td>{}</td>\n".format(notes)
+    row_string += "    <td>{}</td>\n".format(notes or "")
     row_string += "  </tr>\n"
 
     return row_string
