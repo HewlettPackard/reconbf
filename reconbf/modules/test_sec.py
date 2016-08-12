@@ -134,6 +134,19 @@ def _conf_test_sysctl_values():
             {"name": "Kernel pointer hiding",
              "key": "kernel/kptr_restrict",
              "allowed_values": "1, 2"},
+
+            # Affects kernels >= 3.6. Can be mitigated by setting
+            # net.ipv4.tcp_challenge_act_limit to a large number.
+            #
+            # Proposed fix: https://github.com/torvalds/linux/commit/75ff39cc
+            #
+            # New default will be 1000, other recommendations are
+            # 1073741823 (unsigned long long) and 999999999.
+            #
+            {"name":
+             "CVE-2016-5696 Challenge ACK counter",
+             "key": "net/ipv4/tcp_challenge_ack_limit",
+             "allowed_values": "1073741823, 999999999", "1000"},
             ]
 
 
