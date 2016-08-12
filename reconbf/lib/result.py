@@ -311,10 +311,7 @@ class TestResults:
                         display_type ==
                         ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
-                    html_rows += _create_html_result_row(res['name'],
-                                                         res['result'].result,
-                                                         res['result'].notes,
-                                                         False)
+                    html_rows += _create_html_result_row(res, False)
 
             elif isinstance(res['result'], GroupTestResult):
                 # Handle group result case
@@ -328,20 +325,14 @@ class TestResults:
                                              display_type):
 
                         child_rows.append(_create_html_result_row(
-                            child_res['name'], child_res['result'].result,
-                            child_res['result'].notes, do_indent=True))
+                            child_res, do_indent=True))
 
-                parent_result = res['result'].result
-
-                if (_check_display_result(parent_result, display_type) or
+                if (_check_display_result(res, display_type) or
                         display_type ==
                         ResultDisplayType.DISPLAY_OVERALL_ONLY):
 
                     # build the parent string
-                    parent_row = _create_html_result_row(res['name'],
-                                                         parent_result,
-                                                         "",
-                                                         do_indent=False)
+                    parent_row = _create_html_group_row(res)
 
                     html_rows += parent_row
 
@@ -571,13 +562,10 @@ def _check_display_result(result, display_mode):
         return False
 
 
-def _create_html_result_row(name, result, notes, do_indent):
+def _create_html_result_row(result, do_indent):
     """Create the HTML string for a row in the results table
 
-    :param name: The test name
     :param result: The test result
-    :param notes: Test notes
-    :param do_indent: Boolean indicating whether to indent
     :return: HTML string for the row
     """
 
@@ -590,19 +578,49 @@ def _create_html_result_row(name, result, notes, do_indent):
     indent_class = " class=" + INDENT_CLASS if do_indent else ""
 
     result_class = ""
-    if result == Result.PASS:
+    if result['result'].result == Result.PASS:
         result_class = " class=" + PASS_CLASS
-    elif result == Result.SKIP:
+    elif result['result'].result == Result.SKIP:
         result_class = " class=" + SKIP_CLASS
-    elif result == Result.FAIL:
+    elif result['result'].result == Result.FAIL:
         result_class = " class=" + FAIL_CLASS
 
     row_string = ""
     row_string += "  <tr>\n"
-    row_string += "    <td{}>{}</td>\n".format(indent_class, name)
-    row_string += "    <td{}>{}</td>\n".format(result_class,
-                                               _result_text(result))
-    row_string += "    <td>{}</td>\n".format(notes or "")
+    row_string += "    <td{}>{}</td>\n".format(indent_class, result['name'])
+    row_string += "    <td{}>{}</td>\n".format(
+        result_class, _result_text(result['result'].result))
+    row_string += "    <td>{}</td>\n".format(result['result'].notes or "")
+    row_string += "  </tr>\n"
+
+    return row_string
+
+
+def _create_html_group_row(result):
+    """Create the HTML string for a group row in the results table
+
+    :param result: The test result
+    :return: HTML string for the row
+    """
+
+    PASS_CLASS = "test_pass"
+    FAIL_CLASS = "test_fail"
+    SKIP_CLASS = "test_skip"
+
+    result_class = ""
+    if result['result'].result == Result.PASS:
+        result_class = " class=" + PASS_CLASS
+    elif result['result'].result == Result.SKIP:
+        result_class = " class=" + SKIP_CLASS
+    elif result['result'].result == Result.FAIL:
+        result_class = " class=" + FAIL_CLASS
+
+    row_string = ""
+    row_string += "  <tr>\n"
+    row_string += "    <td>{}</td>\n".format(result['name'])
+    row_string += "    <td{}>{}</td>\n".format(
+        result_class, _result_text(result['result'].result))
+    row_string += "    <td></td>\n"
     row_string += "  </tr>\n"
 
     return row_string
