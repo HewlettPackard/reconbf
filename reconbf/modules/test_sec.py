@@ -65,76 +65,85 @@ def test_shellshock(config):
         return TestResult(result, reason)
 
 
+class _sysctl_check(object):
+    def __init__(self, key, check, values, description=None):
+        self._key = key
+        self._values = values
+        self._check = getattr(self, check)
+        if description:
+            self._description = description
+        else:
+            self._description = key
+
+    def description(self):
+        return self._description
+
+    def report_failure(self, actual):
+        check_name = self._check.__name__
+        expected = check_name.replace("_", " ") + " " + str(self._values)
+        return "expected {}, actual {}".format(expected, actual)
+
+    def one_of(self, value):
+        return value in self._values
+
+    def none_of(self, value):
+        return value not in self._values
+
+    def match(self, value):
+        return value == self._values
+
+    def at_least(self, value):
+        return int(value) >= int(self._values)
+
+    def config_key(self):
+        return self._key
+
+    def check(self, value):
+        return self._check(value)
+
+
 def _conf_test_sysctl_values():
-    return [{"name": "Suid coredump handling",
-             "key": "fs/suid_dumpable",
-             "allowed_values": "0, 2"},
 
-            {"name": "TCP Syncookie protection",
-             "key": "net/ipv4/tcp_syncookies",
-             "allowed_values": "1"},
+    return [
+        _sysctl_check("fs/suid_dumpable", "one_of", ["0", "2"],
+                      "SUID coredump handling"),
+        _sysctl_check("net/ipv4/tcp_syncookies", "match", "1",
+                      "TCP syncookie protection"),
+        _sysctl_check("net/ipv4/tcp_max_syn_backlog", "match", "4096"),
+        _sysctl_check("net/ipv4/conf/all/rp_filter", "match", "1"),
+        _sysctl_check("net/ipv4/conf/all/accept_source_route", "match", "0"),
+        _sysctl_check("net/ipv4/conf/all/accept_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/conf/all/secure_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/conf/default/accept_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/conf/default/secure_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/conf/all/send_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/conf/default/send_redirects", "match", "0"),
+        _sysctl_check("net/ipv4/icmp_echo_ignore_broadcasts", "match", "1"),
+        _sysctl_check("net/ipv4/icmp_ignore_bogus_error_responses",
+                      "match", "1"),
+        _sysctl_check("net/ipv4/ip_forward", "match", "0"),
+        _sysctl_check("net/ipv4/conf/all/log_martians", "match", "1"),
+        _sysctl_check("net/ipv4/conf/default/rp_filter", "match", "1"),
+        _sysctl_check("vm/swappiness", "match", "0"),
+        _sysctl_check("vm/mmap_min_addr", "one_of",
+                      ["4096", "8192", "16384", "32768", "65536", "131072"]),
+        _sysctl_check("kernel/core_pattern", "match", "core"),
+        _sysctl_check("kernel/randomize_va_space", "match", "2"),
+        _sysctl_check("kernel/exec-shield", "match", "1"),
+        _sysctl_check("kernel/kptr_restrict", "one_of", ["1", "2"],
+                      "Kernel pointer hiding"),
 
-            {"key": "net/ipv4/tcp_max_syn_backlog",
-             "allowed_values": "4096"},
-
-            {"key": "net/ipv4/conf/all/rp_filter",
-             "allowed_values": "1"},
-
-            {"key": "net/ipv4/conf/all/accept_source_route",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/all/accept_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/all/secure_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/default/accept_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/default/secure_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/all/send_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/default/send_redirects",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/icmp_echo_ignore_broadcasts",
-             "allowed_values": "1"},
-
-            {"key": "net/ipv4/icmp_ignore_bogus_error_responses",
-             "allowed_values": "1"},
-
-            {"key": "net/ipv4/ip_forward",
-             "allowed_values": "0"},
-
-            {"key": "net/ipv4/conf/all/log_martians",
-             "allowed_values": "1"},
-
-            {"key": "net/ipv4/conf/default/rp_filter",
-             "allowed_values": "1"},
-
-            {"key": "vm/swappiness",
-             "allowed_values": "0"},
-
-            {"key": "vm/mmap_min_addr",
-             "allowed_values": "4096, 8192, 16384, 32768, 65536, 131072"},
-
-            {"key": "kernel/core_pattern",
-             "allowed_values": "core"},
-
-            {"key": "kernel/randomize_va_space",
-             "allowed_values": "2"},
-
-            {"key": "kernel/exec-shield",
-             "allowed_values": "1"},
-
-            {"name": "Kernel pointer hiding",
-             "key": "kernel/kptr_restrict",
-             "allowed_values": "1, 2"},
-            ]
+        # Affects kernels >= 3.6. Can be mitigated by setting
+        # net.ipv4.tcp_challenge_act_limit to a large number.
+        #
+        # Proposed fix: https://github.com/torvalds/linux/commit/75ff39cc
+        #
+        # New default will be 1000, other recommendations are
+        # 1073741823 (unsigned long long) and 999999999.
+        #
+        _sysctl_check("net/ipv4/tcp_challenge_ack_limit", "at_least", "1000",
+                      "CVE-2016-5696 challenge ack counter")
+    ]
 
 
 @test_class.takes_config(_conf_test_sysctl_values)
@@ -149,48 +158,29 @@ def _conf_test_sysctl_values():
     parameters can be used to tune and harden the security of a system. This
     check verifies that secure values have been used where applicable.
     """)
-def test_sysctl_values(sysctl_reqs):
+def test_sysctl_values(checks):
     results = GroupTestResult()
 
-    if not sysctl_reqs:
+    if not checks:
         return TestResult(Result.SKIP, "Unable to load module config file")
 
-    else:
-        for requirement in sysctl_reqs:
-            cur_result = None
-            notes = ""
-            # valid tests must have a key and allowed values
-            if 'key' in requirement and 'allowed_values' in requirement:
-
-                # name a test with specified name if it exists, otherwise just
-                # use the key
-                if 'name' in requirement:
-                    test_name = "Sysctl check for " + requirement['name']
-                else:
-                    test_name = "Sysctl check for " + requirement['key']
-
-                val_str = requirement['allowed_values'].replace(' ', '')
-                allowed_values = val_str.split(',')
-
-                try:
-                    value = utils.get_sysctl_value(requirement['key'])
-                except utils.ValNotFound:
-                    cur_result = Result.SKIP
-                    notes = "Could not find a value for sysctl key { "
-                    notes += requirement['key'] + " }"
-                else:
-                    if value in allowed_values:
-                        cur_result = Result.PASS
-                    else:
-                        cur_result = Result.FAIL
-                        notes = "Key { " + requirement['key']
-                        notes += " } expected one of { " + val_str
-                        notes += " } but got " + value
-                results.add_result(test_name,
-                                   TestResult(cur_result, notes=notes))
-
+    for sysctl in checks:
+        try:
+            value = utils.get_sysctl_value(sysctl.config_key())
+            result = None
+            if sysctl.check(value):
+                result = TestResult(Result.PASS)
             else:
-                logger.info("Got malformed requirement %s", requirement)
+                error = sysctl.report_failure(value)
+                result = TestResult(Result.FAIL, notes=error)
+
+            results.add_result(sysctl.description(), result)
+
+        except utils.ValNotFound:
+            notes = "Could not find a value for " + sysctl.config_key()
+            results.add_result(sysctl.description(),
+                               TestResult(Result.SKIP, notes=notes))
+
     return results
 
 
