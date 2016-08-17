@@ -230,13 +230,13 @@ def test_proc_map_access():
         https://www.kernel.org/doc/Documentation/security/Yama.txt
     """)
 def test_ptrace_scope():
-    ptrace_scope = '/proc/sys/kernel/yama/ptrace_scope'
+    ptrace_scope = 'kernel/yama/ptrace_scope'
     kernel_compiled_with_yama = utils.kconfig_option(
         "CONFIG_SECURITY_YAMA")
     if not kernel_compiled_with_yama:
         return TestResult(Result.FAIL,
                           notes="Kernel missing CONFIG_SECURITY_YAMA")
-    enabled = int(open(ptrace_scope).read().strip())
+    enabled = int(utils.get_sysctl_value(ptrace_scope))
     rc = Result.PASS if enabled >= 1 else Result.FAIL
     return TestResult(rc, notes="{} = {}".format(ptrace_scope, enabled))
 
