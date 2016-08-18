@@ -79,7 +79,7 @@ def _get_docker_container():
         containers = subprocess.check_output(['docker',
                                               'ps',
                                               '-q']).split(b'\n')
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, EnvironmentError):
         return None
 
     return [c for c in containers if c]
@@ -94,7 +94,7 @@ def _get_docker_info():
 
     try:
         return subprocess.check_output(['docker', 'info'])
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, EnvironmentError):
         return None
 
 
