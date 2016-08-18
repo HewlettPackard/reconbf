@@ -106,6 +106,18 @@ a false-negative if the analysed binary was compiled with `-fstack-protector`
 contained buffers that require protection.
 
 
+Module development
+------------------
+
+While developing new modules, please keep the following in mind:
+
+- ensure the code style matches (partially enforced by flake8 already)
+- new modules should come with unittests for them
+- new modules should not do direct IO operations; files or processes should be
+  opened by either general abstractions in `reconbf.utils`, or local helpers in
+  separate functions - this is to help writing small tests
+
+
 License
 -------
 reconbf is released under Apache 2.0 license.
