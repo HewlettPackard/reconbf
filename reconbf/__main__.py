@@ -32,7 +32,12 @@ def main():
 
     # are we just writing configuration instead of doing standard run?
     if args.generate_config:
-        _generate_config(args.config_file, args.generate_config)
+        if args.config_file:
+            fobj = open(args.config_file, "w")
+        else:
+            fobj = sys.stdout
+        _generate_config(fobj, args.generate_config)
+        fobj.flush()
         sys.exit()
 
     # are we just explaining a specifc test?
@@ -81,7 +86,7 @@ def main():
         sys.exit(0)
 
 
-def _generate_config(filename, mode):
+def _generate_config(output, mode):
     new_config = {'modules': {}}
     modules_config = new_config['modules']
 
@@ -104,11 +109,10 @@ def _generate_config(filename, mode):
 
     config_content = json.dumps(new_config, separators=(',', ': '),
                                 indent=4, sort_keys=True)
-    if filename:
-        with open(filename, "w") as f:
-            f.write(config_content)
-    else:
-        print(config_content)
+    if str is bytes:
+        config_content = config_content.decode('utf-8')
+
+    output.write(config_content)
 
 
 def _check_root():
