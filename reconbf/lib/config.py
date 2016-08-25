@@ -38,10 +38,6 @@ class ConfigNotFound(Exception):
 
 class Config:
     def __init__(self, config_file):
-
-        # default config search path
-        self._config_paths = ['config']
-
         # try to initialize config class from specified json config file
         try:
             json_data = json.load(config_file)
@@ -53,14 +49,6 @@ class Config:
 
         else:
             self._config = json_data
-
-    def set_profile_config_path(self, profile_config_path):
-        # if a profile config path is specified, it takes precedence
-        self._config_paths.insert(0, profile_config_path)
-
-    @property
-    def config_paths(self):
-        return self._config_paths
 
     def get_config(self, config_path, default=_no_default):
         """Function will return a specified section of json or value
