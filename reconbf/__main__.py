@@ -60,14 +60,16 @@ def main():
     _check_root()
 
     # prefer: 1) cmd line config file  2) default
-    if args.config_file:
-        config.config = config.Config(args.config_file)
-    else:
-        config.config = config.Config('config/rbf.cfg')
+    config_path = args.config_file or 'config/rbf.cfg'
+    try:
+        with open(config_path, 'r') as config_file:
+            config.config = config.Config(config_file)
+    except EnvironmentError:
+        logger.error("Unable to open config file [ %s ]", config_path)
+        sys.exit(2)
 
     test_set = TestSet()
-    added = test_set.add_known_tests(
-        config.get_configured_modules())
+    added = test_set.add_known_tests(config.get_configured_tests())
     logger.info("Loaded [ %s ] tests", added)
 
     results = test_set.run()
@@ -99,13 +101,12 @@ def _generate_config(output, mode):
         if test_mod not in modules_config:
             modules_config[test_mod] = {}
 
-        # insert test config if needed
-        if hasattr(test['function'], "takes_config"):
-            if mode == 'default':
-                modules_config[test_mod][test['name']] = None
-            else:
-                test_config = test['function'].config_generator()
-                modules_config[test_mod][test['name']] = test_config
+        takes_config = hasattr(test['function'], "takes_config")
+        if mode == 'default' or not takes_config:
+            modules_config[test_mod][test['name']] = None
+        else:
+            test_config = test['function'].config_generator()
+            modules_config[test_mod][test['name']] = test_config
 
     config_content = json.dumps(new_config, separators=(',', ': '),
                                 indent=4, sort_keys=True)
