@@ -42,32 +42,6 @@ def _get_main_docker_processes():
     return docker_ps
 
 
-# TODO: deprecated, delete after moving to _get_main_docker_process
-def _get_docker_processes():
-    """Takes the return of a get_ps_full() and strips out the cruft to
-    only the docker config lines.
-
-    :returns: A list containing any/all lines that have 'docker' in them.
-    """
-
-    process_list = utils.running_processes()
-    docker_ps = []
-
-    for entry in process_list:
-        if entry[1]:
-            if 'docker' in entry[1]:
-                results = subprocess.check_output(['ps',
-                                                   '-o',
-                                                   'cmd',
-                                                   str(entry[0])])
-                # ps -o returns the heading 'CMD', so pop that off
-                results_list = results.split(b'\n')
-                results_list.pop(0)
-                docker_ps.append(results)
-
-    return docker_ps
-
-
 @utils.idempotent
 def _get_docker_container():
     """Runs the docker ps -q command.
@@ -106,7 +80,7 @@ def _get_docker_inspect(container_id):
     """
 
     inspect = subprocess.check_output(['docker', 'inspect', container_id])
-    return json.loads(inspect)[0]
+    return json.loads(inspect.decode('utf-8'))[0]
 
 
 def _inspect_test(f):
@@ -274,7 +248,7 @@ def test_no_lxc():
     logger.debug("Testing if the container is running in LXC memory.")
     reason = "No Docker containers found."
 
-    docker_ps = _get_docker_processes()
+    docker_ps = _get_main_docker_processes()
     if docker_ps is None:
         return TestResult(Result.SKIP, "Docker is not running.")
 
@@ -330,7 +304,7 @@ def test_storage_driver():
               if l.startswith(b'Storage Driver:')]
 
     if driver:
-        if 'aufs' in driver[0]:
+        if b'aufs' in driver[0]:
             notes = "Storage driver set to insecure aufs."
             return TestResult(Result.FAIL, notes)
         else:
