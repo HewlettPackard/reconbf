@@ -62,7 +62,7 @@ class TestSet():
     def tests(self):
         return self._tests
 
-    def add_known_tests(self, configured_modules=None):
+    def add_known_tests(self, configured_tests=None):
         """Adds all known recon tests to the test set.
         """
 
@@ -74,8 +74,8 @@ class TestSet():
                 modules.__path__):
             logger.debug("Importing tests module: %s", module_name)
 
-            if configured_modules is not None and \
-                    module_name not in configured_modules:
+            if configured_tests is not None and \
+                    module_name not in configured_tests:
                 logger.debug("Module not configured: %s", module_name)
                 continue
 
@@ -96,6 +96,11 @@ class TestSet():
                 if not isfunction(function):
                     continue
                 if not hasattr(function, "is_recon_test"):
+                    continue
+                if configured_tests is not None and \
+                        fn_name not in configured_tests[module_name]:
+                    logger.debug("Test not configured: %s.%s",
+                                 module_name, fn_name)
                     continue
 
                 new_test = {

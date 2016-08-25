@@ -88,13 +88,18 @@ class Config:
 
         return cur_item
 
-    def get_configured_modules(self):
-        return list(self._config.get('modules', {}).keys())
+    def get_configured_tests(self):
+        """Return the dict of (module, test_names) for each configured test"""
+        tests = {}
+        for mod, m_tests in self._config.get('modules', {}).items():
+            tests[mod] = list(m_tests)
+
+        return tests
 
 
 def get_config(config_path, default=_no_default):
     return config.get_config(config_path, default)
 
 
-def get_configured_modules():
-    return config.get_configured_modules()
+def get_configured_tests():
+    return config.get_configured_tests()
