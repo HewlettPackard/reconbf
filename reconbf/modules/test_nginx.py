@@ -250,6 +250,9 @@ def _conf_bad_protos():
     banned protocols can be added in configuration.
     """)
 def ssl_protos(bad_protos):
+    if not os.path.exists(NGINX_CONFIG_PATH):
+        return TestResult(Result.SKIP, "nginx config not found")
+
     bad_protos = set(bad_protos)
     results = GroupTestResult()
 
