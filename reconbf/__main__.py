@@ -60,10 +60,13 @@ def main():
     _check_root()
 
     # prefer: 1) cmd line config file  2) default
-    if args.config_file:
-        config.config = config.Config(args.config_file)
-    else:
-        config.config = config.Config('config/rbf.cfg')
+    config_path = args.config_file or 'config/rbf.cfg'
+    try:
+        with open(config_path, 'r') as config_file:
+            config.config = config.Config(config_file)
+    except EnvironmentError:
+        logger.error("Unable to open config file [ %s ]", config_path)
+        sys.exit(2)
 
     test_set = TestSet()
     added = test_set.add_known_tests(config.get_configured_tests())

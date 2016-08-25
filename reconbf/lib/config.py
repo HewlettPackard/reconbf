@@ -44,12 +44,7 @@ class Config:
 
         # try to initialize config class from specified json config file
         try:
-            with open(config_file, 'r') as json_file:
-                json_data = json.load(json_file)
-
-        except EnvironmentError:
-            logger.error("Unable to open config file [ %s ]", config_file)
-            sys.exit(2)
+            json_data = json.load(config_file)
 
         except ValueError:
             logger.error("File [ %s ] does not appear to be valid JSON.",
