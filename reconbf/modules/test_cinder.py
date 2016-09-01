@@ -59,11 +59,7 @@ def config_permission(config):
                           'Could not find group "%s"' % config['group'])
 
     result = GroupTestResult()
-    files = ['/etc/cinder/cinder.conf',
-             '/etc/cinder/api-paste.ini',
-             '/etc/cinder/policy.json',
-             '/etc/cinder/rootwrap.conf',
-             ]
+    files = ['cinder.conf', 'api-paste.ini', 'policy.json', 'rootwrap.conf']
     for f in files:
         path = os.path.join(config['dir'], f)
         result.add_result(path,
