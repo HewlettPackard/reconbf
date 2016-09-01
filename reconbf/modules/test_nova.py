@@ -59,11 +59,7 @@ def config_permission(config):
                           'Could not find group "%s"' % config['group'])
 
     result = GroupTestResult()
-    files = ['/etc/nova/nova.conf',
-             '/etc/nova/api-paste.ini',
-             '/etc/nova/policy.json',
-             '/etc/nova/rootwrap.conf',
-             ]
+    files = ['nova.conf', 'api-paste.ini', 'policy.json', 'rootwrap.conf']
     for f in files:
         path = os.path.join(config['dir'], f)
         result.add_result(path,
