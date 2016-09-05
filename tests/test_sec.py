@@ -46,3 +46,13 @@ class SysctlValues(unittest.TestCase):
         with patch.object(utils, 'get_sysctl_value', return_value="0"):
             res = test_sec.test_sysctl_values({"x": ("at_least", "5")})
         self.assertEqual(res.result, Result.FAIL)
+
+    def test_without_description(self):
+        with patch.object(utils, 'get_sysctl_value', return_value="foo"):
+            res = test_sec.test_sysctl_values({"x": ("match", "foo")})
+        self.assertEqual(res.results[0]['name'], "x")
+
+    def test_with_description(self):
+        with patch.object(utils, 'get_sysctl_value', return_value="foo"):
+            res = test_sec.test_sysctl_values({"x": ("match", "foo", "bar")})
+        self.assertEqual(res.results[0]['name'], "bar")
