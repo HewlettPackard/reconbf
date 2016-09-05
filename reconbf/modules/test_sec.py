@@ -88,12 +88,12 @@ def _sysctl_check(pattern, value):
         raise ValueError("unknown pattern '{}'".format(patt_type))
 
 
-def _sysctl_description(pattern):
+def _sysctl_description(key, pattern):
     try:
         _, _, description = pattern
         return description
     except ValueError:
-        return pattern[0]
+        return key
 
 
 def _conf_test_sysctl_values():
@@ -156,7 +156,7 @@ def test_sysctl_values(checks):
         return TestResult(Result.SKIP, "Unable to load module config file")
 
     for key, pattern in checks.items():
-        description = _sysctl_description(pattern)
+        description = _sysctl_description(key, pattern)
         try:
             value = utils.get_sysctl_value(key)
             result = None
