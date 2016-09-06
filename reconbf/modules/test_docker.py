@@ -16,6 +16,7 @@ from reconbf.lib.logger import logger
 import functools
 import json
 import os
+import platform
 import subprocess
 import reconbf.lib.test_class as test_class
 from reconbf.lib.result import Result, GroupTestResult, TestResult
@@ -330,6 +331,10 @@ def test_storage_driver():
     """)
 def test_docker_daemon():
     logger.debug("Checking auditing on the Docker daemon.")
+
+    if platform.system() != 'Linux':
+        return TestResult(Result.SKIP, "applies to Linux only")
+
     note = "Test is invalid for newer kernels."
 
     kernel = tuple(int(x) for x in os.uname()[2].split('.')[:2])
