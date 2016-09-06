@@ -36,7 +36,7 @@ def main():
             fobj = open(args.config_file, "w")
         else:
             fobj = sys.stdout
-        _generate_config(fobj, args.generate_config)
+        _write_generated_config(fobj, args.generate_config)
         fobj.flush()
         sys.exit()
 
@@ -88,7 +88,7 @@ def main():
         sys.exit(0)
 
 
-def _generate_config(output, mode):
+def _generate_config(mode):
     new_config = {'modules': {}}
     modules_config = new_config['modules']
 
@@ -107,6 +107,12 @@ def _generate_config(output, mode):
         else:
             test_config = test['function'].config_generator()
             modules_config[test_mod][test['name']] = test_config
+
+    return new_config
+
+
+def _write_generated_config(output, mode):
+    new_config = _generate_config(mode)
 
     config_content = json.dumps(new_config, separators=(',', ': '),
                                 indent=4, sort_keys=True)
