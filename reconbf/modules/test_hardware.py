@@ -18,6 +18,7 @@ from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
 
 import os
+import platform
 
 
 @test_class.explanation(
@@ -34,6 +35,9 @@ import os
     HID, storage, or exploitation device.
     """)
 def usb_authorization():
+    if platform.system() != 'Linux':
+        return TestResult(Result.SKIP, "available only on Linux")
+
     open_hosts = []
     hosts = [dev for dev in os.listdir('/sys/bus/usb/devices') if
              dev.startswith('usb')]
