@@ -21,6 +21,7 @@ from collections import defaultdict
 import glob
 import gzip
 import os
+import platform
 import re
 import subprocess
 import functools
@@ -247,6 +248,14 @@ def listening_executables():
     :returns: A list of all network executables
     """
 
+    if platform.system() == 'Linux':
+        return _listening_executables_linux()
+    elif have_command('sockstat'):
+        # likely bsd format
+        return _listening_executables_sockstat()
+
+
+def _listening_executables_linux():
     executables = set()
     for pid in os.listdir('/proc'):
         if not pid.isdigit():
@@ -266,11 +275,36 @@ def listening_executables():
                 continue
 
         if listening:
-            exe = os.readlink(os.path.join('/proc', pid, 'exe'))
+            exe = _binary_for_pid(pid)
+            if exe is None:
+                continue
             if exe.endswith(' (deleted)'):
                 continue
             executables.add(exe)
     return sorted(executables)
+
+
+def _listening_executables_sockstat():
+    # for BSD systems
+    executables = set()
+    res = subprocess.check_output('sockstat').decode('ascii')
+    for line in res.splitlines()[1:]:
+        parts = line.split()
+        pid = parts[2]
+        exe = _binary_for_pid(pid)
+        if exe is None:
+            continue
+        executables.add(exe)
+    return sorted(executables)
+
+
+def _binary_for_pid(pid):
+    for proc_file in ('exe', 'file'):
+        path = os.path.join('/proc', pid, proc_file)
+        if os.path.exists(path):
+            return os.readlink(path)
+
+    return None
 
 
 def config_get(config, option):
