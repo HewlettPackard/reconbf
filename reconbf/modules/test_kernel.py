@@ -80,6 +80,7 @@ from reconbf.lib.result import GroupTestResult, Result, TestResult
     Therefore the test will not be run fully unless GRKERNSEC
     is detected.
     """)
+@utils.linux_specific
 def test_pax():
     pax_kernel_options = {
         "Non-executable kernel pages":          "CONFIG_PAX_KERNEXEC",
@@ -182,6 +183,7 @@ def _cant_read_parents_when_priv_dropped(result):
         * Ensure that setuid priv-dropped process can still read
           their own maps files.
     """)
+@utils.linux_specific
 def test_proc_map_access():
     tests = {
         "Can read own /proc/$pid/maps file": {
@@ -229,6 +231,7 @@ def test_proc_map_access():
 
         https://www.kernel.org/doc/Documentation/security/Yama.txt
     """)
+@utils.linux_specific
 def test_ptrace_scope():
     ptrace_scope = 'kernel/yama/ptrace_scope'
     kernel_compiled_with_yama = utils.kconfig_option(
@@ -253,6 +256,7 @@ def test_ptrace_scope():
     workarounds, however it can still block some of the remote
     vulnerabilities.
     """)
+@utils.linux_specific
 def test_kaslr():
     try:
         with open('/sys/kernel/boot_params/data', 'rb') as params_file:
