@@ -699,3 +699,12 @@ def parse_openstack_ini(path):
     with open(path, 'r') as f:
         contents = _parse_openstack_ini_contents(f)
     return contents
+
+
+def linux_specific(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if platform.system() != "Linux":
+            return TestResult(Result.SKIP, "Test is Linux specific")
+        return f(*args, **kwargs)
+    return wrapper

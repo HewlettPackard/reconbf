@@ -16,6 +16,7 @@ from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 from subprocess import PIPE
 from subprocess import Popen
@@ -31,6 +32,7 @@ from subprocess import Popen
     installed in order to confine applications to the leas privilege required
     to run them.
     """)
+@utils.linux_specific
 def test_selinux():
     """Uses return from sestatus command to ensure SELinux is installed
 
@@ -96,6 +98,7 @@ def test_selinux():
     installed in order to confine applications to the leas privilege required
     to run them.
     """)
+@utils.linux_specific
 def test_apparmor():
     """Uses return from apparmor_status to check installation and level
     at which AppArmor is monitoring.
