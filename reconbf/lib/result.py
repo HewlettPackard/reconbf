@@ -645,7 +645,7 @@ def _get_term_colors():
 def _get_term_width():
     # try to get the width from stty (option columns)
     try:
-        term_settings = subprocess.check_output(['stty', '--all'])
+        term_settings = subprocess.check_output(['stty', '-a'])
 
     except (IOError, subprocess.CalledProcessError):
         # stty is not installed, or failed: assume 80 columns
@@ -654,9 +654,13 @@ def _get_term_width():
     for line in term_settings.splitlines():
         for setting in line.split(b';'):
             try:
-                option, value = setting.strip().split(b' ', 1)
-                if option.strip() == b'columns':
-                    return int(value.strip())
+                part1, part2 = setting.strip().split(b' ', 1)
+                # linux order
+                if part1.strip() == b'columns':
+                    return int(part2.strip())
+                # bsd order
+                elif part2.strip() == b'columns':
+                    return int(part1.strip())
             except ValueError:
                 # unexpected format
                 continue

@@ -24,7 +24,7 @@ import re
 import subprocess
 
 
-MOUNT_RE = re.compile(b"""
+MOUNT_RE_LINUX = re.compile(b"""
     (.+)  # source
     \s on \s
     (.+)  # destination
@@ -32,6 +32,14 @@ MOUNT_RE = re.compile(b"""
     (.+)  # type
     \s
     \(([^)]*)\)  # options
+    """, re.VERBOSE)
+MOUNT_RE_BSD = re.compile(b"""
+    (.+)  # source
+    \s on \s
+    (.+)  # destination
+    \s \(
+    ([^,]*)  # type
+    ([^)]*)\)  # options
     """, re.VERBOSE)
 
 
@@ -45,7 +53,10 @@ def _get_mounts():
     results = []
 
     for mount in mounts.splitlines():
-        m = MOUNT_RE.match(mount.strip())
+        for RE in (MOUNT_RE_LINUX, MOUNT_RE_BSD):
+            m = RE.match(mount.strip())
+            if m:
+                break
         if not m:
             logger.warning("could not parse mount line '%s'", mount)
             continue
@@ -53,7 +64,7 @@ def _get_mounts():
             m.group(1),
             m.group(2),
             m.group(3),
-            m.group(4).split(b','),
+            m.group(4).split(b',')[1:],
             ))
 
     return results

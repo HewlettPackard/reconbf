@@ -80,21 +80,37 @@ def _safe_exec(to_exec, user="nobody"):
 
 
 def _elf_syms(path):
-    return _safe_exec(['readelf', '-s', path])
+    try:
+        return _safe_exec(['readelf', '-s', path])
+    except subprocess.CalledProcessError:
+        # file not readable
+        return None
 
 
 @utils.idempotent
 def _elf_dynamic(path):
-    return _safe_exec(['readelf', '-d', path])
+    try:
+        return _safe_exec(['readelf', '-d', path])
+    except subprocess.CalledProcessError:
+        # file not readable
+        return None
 
 
 @utils.idempotent
 def _elf_prog_headers(path):
-    return _safe_exec(['readelf', '-W', '-l', path])
+    try:
+        return _safe_exec(['readelf', '-W', '-l', path])
+    except subprocess.CalledProcessError:
+        # file not readable
+        return None
 
 
 def _elf_file_headers(path):
-    return _safe_exec(['readelf', '-h', path])
+    try:
+        return _safe_exec(['readelf', '-h', path])
+    except subprocess.CalledProcessError:
+        # file not readable
+        return None
 
 
 def _check_relro(path):
@@ -103,6 +119,9 @@ def _check_relro(path):
     to build using the flags: $ gcc foo.c -Wl,-z,relro,-z,now.
     """
     headers = _elf_prog_headers(path)
+    if headers is None:
+        return (None, Result.CONF_GUESS)
+
     if b'GNU_RELRO' in headers:
         dynamic_section = _elf_dynamic(path)
         if b'BIND_NOW' in dynamic_section:
@@ -124,6 +143,9 @@ def _check_stack_canary(path):
     we are looking for here is the symbol __stack_chk_fail.
     """
     symbols = _elf_syms(path)
+    if symbols is None:
+        return (None, Result.CONF_GUESS)
+
     if b'__stack_chk_fail' in symbols:
         return (True, Result.CONF_SURE)
 
@@ -140,6 +162,9 @@ def _check_nx(path):
     for things like JIT interpreters.
     """
     headers = _elf_prog_headers(path)
+    if headers is None:
+        return (None, Result.CONF_GUESS)
+
     for line in headers.split(b'\n'):
         if b'GNU_STACK' in line and b'RWE' not in line:
             return (True, Result.CONF_SURE)
@@ -155,6 +180,9 @@ def _check_pie(path):
     executable as a PIE: $ gcc foo.c -fPIE -pie.
     """
     file_headers = _elf_file_headers(path)
+    if file_headers is None:
+        return (None, Result.CONF_GUESS)
+
     for line in file_headers.split(b'\n'):
         if b'Type:' in line:
             if b'EXEC' in line:
@@ -172,6 +200,9 @@ def _check_runpath(path):
     """
 
     dyn = _elf_dynamic(path)
+    if dyn is None:
+        return (None, Result.CONF_GUESS)
+
     return (b'rpath' in dyn or b'runpath' in dyn, Result.CONF_SURE)
 
 
@@ -181,7 +212,12 @@ def _find_used_libc(path):
     resolved by actual linker.
     """
 
-    output = _safe_exec(['ldd', path])
+    try:
+        output = _safe_exec(['ldd', path])
+    except subprocess.CalledProcessError:
+        # likely not a dynamic executable
+        return None
+
     for line in output.splitlines():
         parts = line.split(b'=>')
         if len(parts) < 2:
@@ -286,7 +322,10 @@ def _check_policy(context, policy, actual, results):
     fmt = "Expected: {} Actual: {}"
     for k in policy.keys():
         check = "[{:^12s}] {}".format(k, context)
-        if policy[k] != actual[k][0]:
+        if actual[k][0] is None:
+            results.add_result(check, TestResult(Result.SKIP,
+                                                 "cannot access file"))
+        elif policy[k] != actual[k][0]:
             exp = str(policy[k]).capitalize()
             act = str(actual[k][0]).capitalize()
             failure = fmt.format(exp, act)

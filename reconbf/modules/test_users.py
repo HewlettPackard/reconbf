@@ -16,6 +16,7 @@ from reconbf.lib.logger import logger
 import reconbf.lib.test_class as test_class
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 from collections import defaultdict
 import grp
@@ -92,6 +93,9 @@ def test_accounts_nopassword():
     access to a system.
     """)
 def test_list_sudoers():
+    if not utils.have_command('sudo'):
+        return TestResult(Result.SKIP, "sudo not installed")
+
     # these can be moved to config if there is a good reason somebody would
     # ever want to change them, for now they stay here
     list_sudoer_command = ['sudo', '-U', '$USER', '-l']

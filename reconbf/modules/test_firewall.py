@@ -15,6 +15,7 @@
 from reconbf.lib import test_class
 from reconbf.lib.result import Result
 from reconbf.lib.result import TestResult
+from reconbf.lib import utils
 
 import collections
 import subprocess
@@ -59,6 +60,9 @@ def _get_default_policy(rules):
     option in case of missed rules.
     """)
 def firewall_whitelisting():
+    if not utils.have_command('iptables-save'):
+        return TestResult(Result.SKIP, "iptables not available")
+
     rules = _list_rules()
     if rules is None:
         return TestResult(Result.SKIP, "Cannot retrieve iptables rules")
