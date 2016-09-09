@@ -325,6 +325,9 @@ def _check_policy(context, policy, actual, results):
         if actual[k][0] is None:
             results.add_result(check, TestResult(Result.SKIP,
                                                  "cannot access file"))
+        elif policy[k] is None:
+            results.add_result(check, TestResult(Result.SKIP, "no policy"))
+
         elif policy[k] != actual[k][0]:
             exp = str(policy[k]).capitalize()
             act = str(actual[k][0]).capitalize()
